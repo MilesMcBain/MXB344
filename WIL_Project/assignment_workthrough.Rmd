@@ -1,0 +1,163 @@
+---
+title: "R Notebook"
+output:
+  html_notebook: default
+  pdf_document: default
+---
+
+```{r}
+#setup chunk
+library(readr)
+library(tidyr)
+library(dplyr)
+library(caret)
+library(purrr)
+
+```
+
+#Read and Join Data
+```{r}
+CUSTOMER_LOAN <- read_csv('~/repos/mxb344/WIL_Project/data/CUSTOMER_LOAN.csv')
+CUSTOMER_LOAN_HISTORY <- read_csv('~/repos/mxb344/WIL_Project/data/CUSTOMER_LOAN_HISTORY.csv')
+
+PROJECT_DATA <- 
+  left_join(CUSTOMER_LOAN, CUSTOMER_LOAN_HISTORY, by=c("id","member_id") )
+
+project_data_tst <- 
+  (!duplicated(PROJECT_DATA)) %>%  
+  PROJECT_DATA[.,] %>% 
+  filter(!is.na(earliest_cr_line))
+```
+38524 Obersations
+
+#Create a response variable
+```{r}
+project_data_tst <-
+  project_data_tst %>% 
+    mutate(repay_fail = if_else(loan_status %in% c('Charged Off',
+                                                   'Does not meet the credit policy. Status:Charged Off',
+                                                   'Late (31-120 days)',
+                                                   'Late (16-30 days)',
+                                                   'Default'), true=1, false=0))
+
+
+```
+
+#Variable selection
+##Remove Low Variance
+```{r}
+#Remove columns with near zero variance
+#Captures NAs and constants(?)
+nearZeroVarCols <- caret::nearZeroVar(project_data_tst)
+names(project_data_tst)[nearZeroVarCols] %>% length() #67 near zero variance predictors
+project_data_tst <- project_data_tst[,-nearZeroVarCols]
+#misses some NA columns.
+```
+##Remove unique categories
+```{r}
+#Remove columns with unique values for all rows
+#url, desc, title, emp_title
+#We could try and engineer features from these or we can toss.
+project_data_tst <- 
+  project_data_tst %>% select(-url, -desc, -emp_title, -title)
+```
+##Convert strings to numeric
+```{r}
+#Need to convert some string variable to numeric
+#Revo util has a percentage sign
+project_data_tst <- 
+  project_data_tst %>% 
+    mutate(revol_util = as.numeric(gsub(pattern = "%", replacement = "", x = revol_util))/100)
+```
+##Handle NA values
+
+Proportion of NAs by variable:
+
+```{r}
+#High proportion of NA
+missing <- 
+  dmap(project_data_tst, .f = is.na) %>% 
+  dmap(sum) %>% 
+  dmap(function(x){x/nrow(project_data_tst)}) %>% 
+  gather(key="column",
+         value="missing",
+         gather=id:repay_fail) %>%
+  arrange(desc(missing))
+missing
+#
+```
+
+In handling NAs we can either:
+
+* Remove column
+* Impute
+* Transform column
+
+Suggest Remove:
+mths_since_last_major_derog
+mths_since_last_record
+next_payment_d
+
+#Handling NA for logistic regression
+
+
+```{r}
+
+#In order to find correlation we would need to convert all variables to numeric/indicators
+varcoding <- dummyVars(repay_fail ~ . ,data = project_data_tst,fullRank = T)
+train_data <- predict(varcoding, newdata = project_data_tst)
+
+
+
+#Identify high correlations
+cor_train_data <- cor(train_data)
+caret::findCorrelation(cor_train_data)
+#TODO: Handle NAs
+
+summary(train_data)
+
+```
+#Variable Importance
+```{r}
+plot(1:10,1:10)
+```
+
+
+#Fit GLM
+#Fit
+```{r}
+glm(formula = 
+  family = "binomial")
+```
+
+<!-- What I am thinking is Option 3. This is for several reasons: -->
+
+<!-- Introduce Kaggle to the students -->
+<!-- However the data size is too big which means classical statistics (eg p-values) will fail -->
+<!-- Consequently, I am proposing to modify the dataset such that it has say around 5,000 observations only -->
+<!-- Around the "max" where you can relay on p-values but big enough to look for an alternative measures -->
+<!-- Add "test data" (or other unusual data) into the dataset which the students need to identify and remove -->
+<!-- Make some records contain missing values -->
+<!-- Add a couple categorical variables -->
+<!-- Assignment can be very similar to the insurance group? assignment from a few years ago (ie a pretty standard assignment) but with the following changes: -->
+
+<!-- Similar to prior assignments, the student needs to run all three models: logit, probit, and cloglog -->
+<!-- Goodness of fit - likelihood ratio, scaled deviance, etc -->
+<!-- Model adequacy - look at transformation, add interaction, residual, etc -->
+<!-- Final model selection -->
+<!-- However, the key additions to the assignment are: -->
+
+<!-- Large Dataset: -->
+<!-- Discuss the impact to p-value for example when dealing with large dataset -->
+<!-- Make use of validation sample - this "machine learning" concept is not currently being taught in maths -->
+<!-- Use of Gini and Information Value (IV) in addition to p-value -->
+<!-- Data Issue: -->
+<!-- Need to handle special values, missing values, etc -->
+<!-- Need to exclude "test" or staff observations for example -->
+<!-- Business: -->
+<!-- Why the industry may prefer one model (ie logit) over others? Because the output is often a scorecard, but the student will not be convert the model to a scorecard else the project will be way too long -->
+<!-- Talk about the variables. The student should think about what other variables might be useful that are not in the dataset. The reason is that in the industry, we often need to construct the modelling dataset ourselves. Some literature review/paper searching will be good for maths student who most likely has not used database before -->
+
+
+
+
