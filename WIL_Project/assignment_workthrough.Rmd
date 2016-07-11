@@ -12,19 +12,20 @@ library(tidyr)
 library(dplyr)
 library(caret)
 library(purrr)
-
+library(lubridate)
+library(ggplot2)
 ```
 
 #Read and Join Data
 ```{r}
-CUSTOMER_LOAN <- read_csv('~/repos/mxb344/WIL_Project/data/CUSTOMER_LOAN.csv')
-CUSTOMER_LOAN_HISTORY <- read_csv('~/repos/mxb344/WIL_Project/data/CUSTOMER_LOAN_HISTORY.csv')
+CUSTOMER_LOAN <- read_csv('~/repos/MXB344/WIL_Project/data/CUSTOMER_LOAN.csv')
+CUSTOMER_LOAN_HISTORY <- read_csv('~/repos/MXB344/WIL_Project/data/CUSTOMER_LOAN_HISTORY.csv')
 
 PROJECT_DATA <- 
   left_join(CUSTOMER_LOAN, CUSTOMER_LOAN_HISTORY, by=c("id","member_id") )
 
 project_data_tst <- 
-  (!duplicated(PROJECT_DATA)) %>%  
+  (!duplicated(PROJECT_DATA)) %>%
   PROJECT_DATA[.,] %>% 
   filter(!is.na(earliest_cr_line))
 ```
@@ -60,6 +61,14 @@ project_data_tst <- project_data_tst[,-nearZeroVarCols]
 #We could try and engineer features from these or we can toss.
 project_data_tst <- 
   project_data_tst %>% select(-url, -desc, -emp_title, -title)
+
+table(project_data_tst$zip_code)
+# We can see many zip codes only have a handful of observations
+# There are a number with a few hundred. If we wanted to explore the effects of those we could recode:
+# category_of_interest1, category_of_interest3, other etc..
+# we have no reason to believe zip code is an imoprtant so fpr now we remove.
+project_data_tst <- 
+  project_data_tst %>% select(-zip_code)
 ```
 ##Convert strings to numeric
 ```{r}
@@ -83,7 +92,7 @@ missing <-
          value="missing",
          gather=id:repay_fail) %>%
   arrange(desc(missing))
-missing
+missing %>% View()
 #
 ```
 
@@ -96,38 +105,109 @@ In handling NAs we can either:
 Suggest Remove:
 mths_since_last_major_derog
 mths_since_last_record
-next_payment_d
+next_payment_d - although you could transform this to something like 'delinq_last_6months'.
 
 #Handling NA for logistic regression
+```{r}
+#Removing Very high
+project_data_tst <- 
+  project_data_tst %>% select(-mths_since_last_major_derog, -mths_since_last_record, -next_pymnt_d)
+
+#could coalesce mths_since_last_delinq into delinq in last 6 months or such. But we have the Delinq last 2 years varibale which is probably sufficient.
+#Last payment date is probably not important since we already have a variable for if the loan is late, 16-30, 31-120 etc.
+#Last credit pull is probably not useful - I thnk this relates to the blanked credit rating variables.
+#id, member id should not be included.
+project_data_tst <- 
+  project_data_tst %>% select(-mths_since_last_delinq, -last_pymnt_d, -last_credit_pull_d, -id, -member_id)
+
+#revol_util is an intersting one. Data dictionary says:
+#Revolving line utilization rate, or the amount of credit the borrower is using relative to all available revolving credit.
+#Wiki definition suggests this is like credit card debt.
+#This could be an important variable.
+project_data_tst %>% filter(is.na(revol_util)) %>% View()
+#It's a low number of NAs, only 54. So it makes sense just to remove.
+project_data_tst <- 
+  project_data_tst %>% filter(!is.na(revol_util))
+
+project_data_tst %>% nrow()
+```
+#Date Variables
+```{r}
+#It's not great to have dates. Really we want to convert them to some number of months since event.
+
+#convert earliest credit line and date approved to credit age
+project_data_tst <- 
+  project_data_tst %>% mutate(credit_age_yrs = difftime(
+                                              parse_date_time(paste0('1',issue_d), orders="d!bY!"),
+                                              parse_date_time(paste0('1',earliest_cr_line), orders="d!bY!"),
+                                              units = 'weeks'
+                                            )/52
+                        ) %>%
+  select(-issue_d, -earliest_cr_line)
+
+```
+#Leaking Variables
+```{r}
+#Consider removing rating and rate variables.
+#A couple of issues arise
+#1. the Alpha grade columns are linear combinations of the sub_grade columns
+#2. the model perfectly separates repay_fail?
+## recoveries > 0 separates repay fail perfectly.
+project_data_tst <-
+  project_data_tst %>% select(-recoveries, -grade, -loan_status, -sub_grade)
+```
 
 
+#Correlated Variables
 ```{r}
 
 #In order to find correlation we would need to convert all variables to numeric/indicators
 varcoding <- dummyVars(repay_fail ~ . ,data = project_data_tst,fullRank = T)
 train_data <- predict(varcoding, newdata = project_data_tst)
-
-
-
+dim(train_data) #981 colums
 #Identify high correlations
 cor_train_data <- cor(train_data)
-caret::findCorrelation(cor_train_data)
-#TODO: Handle NAs
+findCorrelation(cor_train_data, names=TRUE)
 
-summary(train_data)
-
+#is there anything correlated perfectly with response?
+cor_train_data_reposonse = cor(cbind(project_data_tst$repay_fail, train_data))
+findCorrelation(cor_train_data_reposonse, names=TRUE)
+#No.
 ```
+## Drop correlated columns
+```{r}
+train_data <- train_data[,-findCorrelation(cor_train_data, names=FALSE)]
+dim(train_data)
+```
+
+
 #Variable Importance
 ```{r}
-plot(1:10,1:10)
+caret::varImp(model_fit)
 ```
 
 
 #Fit GLM
 #Fit
 ```{r}
-glm(formula = 
-  family = "binomial")
+
+train_frame <- cbind.data.frame(repay_fail = project_data_tst$repay_fail, as.data.frame(train_data))
+
+model_fit <- glm(data = train_frame,
+    formula = repay_fail ~ .,
+  family = "binomial",
+  control = glm.control(maxit = 50))
+
+#This model get's perfect linear separation if you include the grades.
+## Specificall mention this scenario!: Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+
+model_preds = 1 / (1+ (1/exp(predict(model_fit)) ) )
+
+model_preds[model_preds > 0.5] <- 1
+model_preds[model_preds <= 0.5] <- 0
+
+caret::confusionMatrix(data = model_preds, reference = project_data_tst$repay_fail)
+
 ```
 
 <!-- What I am thinking is Option 3. This is for several reasons: -->
