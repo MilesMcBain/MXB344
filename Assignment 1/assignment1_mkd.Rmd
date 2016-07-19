@@ -1,0 +1,137 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+#Modifications to data set
+```{r}
+library(readr)
+library(dplyr)
+
+crime_data <- read_csv('~/Documents/mxb344/MAB624_Sem 2 2015_THOMPSON/assessment/assignment_2/punishment.csv')
+
+#Exploratory analysis
+pairs(crime_data)
+
+crime_data_mod <-
+  crime_data %>% 
+  mutate(total_crimes = Pop*Crime) %>%
+  select(-Crime)
+```
+
+#Naive Poisson fit
+```{r}
+crime_fit <- glm(family = poisson(link="log"),
+                 data = crime_data_mod,
+                 formula = total_crimes ~ .
+                 )
+
+summary(crime_fit)
+```
+## Diagnostics
+### Test of Scaled Residual Deviance
+#### Pearson Residual Deviance
+```{r}
+pearson_resids <- ((crime_fit$y - crime_fit$fitted.values)/sqrt(crime_fit$fitted.values))^2 %>% sum()
+pearson_resids == resid(crime_fit, type="pearson")^2 %>% sum()
+resid(crime_fit, type="pearson")^2 %>% sum()
+```
+It's approximately equal to residual deviance... well same ballpark.
+
+Try Chisq test:
+```{r}
+pchisq(pearson_resids, df = crime_fit$df.residual, lower.tail = F)
+```
+It seems like this suggests a terrible fit to data.
+
+#### Scaled Residual Deviance 
+Deviance Residual is scaled by dispersion, Phi.
+- for introducing deviance there is a sweet normal cancellation to sums of squares GLM book p24.
+- GLM boo p 33 for exponential family deviance/scaled deviance.
+  - each observation's contribution to the deviance? Deviance residual.
+- Calculation of Poisson deviance residual
+```{r}
+dev_resids <- sqrt(((crime_fit$y * log(crime_fit$y/crime_fit$fitted.values)) - (crime_fit$y - crime_fit$fitted.values)) * 2 )* sign(crime_fit$y - crime_fit$fitted.values)
+resid(crime_fit, type="deviance")^2 %>% sum() == sum(dev_resids^2)
+resid(crime_fit, type="deviance")^2 %>% sum()
+```
+Checks out with reported residual deviance above.
+
+Plot this:
+```{r}
+plot(x=crime_fit$fitted.values, y= dev_resids)
+```
+
+####VIF
+```{r}
+library(car)
+#multi-collinearity
+vif(crime_fit)
+```
+This is the generalised VIF.
+
+
+
+
+#Offset Poisson Fit
+```{r}
+offset_fit <- crime_fit <- glm(family = poisson(link="log"),
+                 data = crime_data_mod,
+                 formula = total_crimes ~ M + So + Ed + Po2 + LF + M.F + NW + 
+                   U1 + U2 + Wealth + Ineq + Prob + Time + offset(log(Pop*100000))
+                 )
+
+summary(offset_fit)
+#Removed Po1 because it was not significant.
+```
+## Diagnostics
+### Test of Scaled Residual Deviance
+#### Pearson Residual Deviance
+```{r}
+pchisq(sum(resid(offset_fit, type="pearson")^2) , df = offset_fit$df.residual, lower.tail = FALSE)
+```
+#### Plot Deviance Residuals
+```{r}
+plot(x=offset_fit$fitted.values, y=resid(offset_fit, type="deviance"))
+```
+
+### Check for free dispersion
+```{r}
+qoffset_fit <- crime_fit <- glm(family = quasipoisson(link="log"),
+                 data = crime_data_mod,
+                 formula = total_crimes ~ M + So + Ed + Po2 + LF + M.F + NW + 
+                   U1 + U2 + Wealth + Ineq + Prob + Time + offset(log(Pop))
+                 )
+summary(qoffset_fit)
+```
+Still looking really shit.
+
+# Original crime_data
+```{r}
+orig_fit <- glm(family = poisson(link="log"),
+                 data = crime_data,
+                 formula = Crime ~ M + So + Ed + Po1 + LF + M.F +
+                  + NW + U1 + U2 + Wealth + Ineq + Prob + Time
+                 )
+summary(orig_fit)
+```
+## Diagnostics
+### Test of Scaled Residual Deviance
+#### Pearson Residual Deviance
+```{r}
+pchisq(sum(resid(orig_fit, type="pearson")^2) , df = orig_fit$df.residual, lower.tail = FALSE)
+```
+#### Plot Deviance Residuals
+```{r}
+plot(x=orig_fit$fitted.values, y=resid(orig_fit, type="deviance"))
+```
+### Check free dispersion
+```{r}
+qorig_fit <- glm(family = quasipoisson(link="log"),
+                 data = crime_data,
+                 formula = Crime ~ M + So + Ed + Po1 + LF + M.F +
+                  + NW + U1 + U2 + Wealth + Ineq + Prob + Time
+                 )
+summary(qorig_fit)
+```
+

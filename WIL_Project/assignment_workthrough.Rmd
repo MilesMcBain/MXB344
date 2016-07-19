@@ -21,20 +21,20 @@ library(ggplot2)
 CUSTOMER_LOAN <- read_csv('~/repos/MXB344/WIL_Project/data/CUSTOMER_LOAN.csv')
 CUSTOMER_LOAN_HISTORY <- read_csv('~/repos/MXB344/WIL_Project/data/CUSTOMER_LOAN_HISTORY.csv')
 
-PROJECT_DATA <- 
+PROJECT_DATA <-
   left_join(CUSTOMER_LOAN, CUSTOMER_LOAN_HISTORY, by=c("id","member_id") )
 
-project_data_tst <- 
+project_data <-
   (!duplicated(PROJECT_DATA)) %>%
-  PROJECT_DATA[.,] %>% 
+  PROJECT_DATA[.,] %>%
   filter(!is.na(earliest_cr_line))
 ```
 38524 Obersations
 
 #Create a response variable
 ```{r}
-project_data_tst <-
-  project_data_tst %>% 
+project_data <-
+  project_data %>%
     mutate(repay_fail = if_else(loan_status %in% c('Charged Off',
                                                    'Does not meet the credit policy. Status:Charged Off',
                                                    'Late (31-120 days)',
@@ -49,9 +49,9 @@ project_data_tst <-
 ```{r}
 #Remove columns with near zero variance
 #Captures NAs and constants(?)
-nearZeroVarCols <- caret::nearZeroVar(project_data_tst)
-names(project_data_tst)[nearZeroVarCols] %>% length() #67 near zero variance predictors
-project_data_tst <- project_data_tst[,-nearZeroVarCols]
+nearZeroVarCols <- caret::nearZeroVar(project_data)
+names(project_data)[nearZeroVarCols] %>% length() #67 near zero variance predictors
+project_data <- project_data[,-nearZeroVarCols]
 #misses some NA columns.
 ```
 ##Remove unique categories
@@ -59,23 +59,27 @@ project_data_tst <- project_data_tst[,-nearZeroVarCols]
 #Remove columns with unique values for all rows
 #url, desc, title, emp_title
 #We could try and engineer features from these or we can toss.
-project_data_tst <- 
-  project_data_tst %>% select(-url, -desc, -emp_title, -title)
+project_data <-
+  project_data %>% select(-url, -desc, -emp_title, -title)
 
-table(project_data_tst$zip_code)
+#table(project_data$zip_code)
 # We can see many zip codes only have a handful of observations
 # There are a number with a few hundred. If we wanted to explore the effects of those we could recode:
 # category_of_interest1, category_of_interest3, other etc..
 # we have no reason to believe zip code is an imoprtant so fpr now we remove.
-project_data_tst <- 
-  project_data_tst %>% select(-zip_code)
+project_data <-
+  project_data %>% select(-zip_code)
+
+#it is also justifiable to remove this since state has some small states
+project_data <-
+  project_data %>% select(-addr_state)
 ```
 ##Convert strings to numeric
 ```{r}
 #Need to convert some string variable to numeric
 #Revo util has a percentage sign
-project_data_tst <- 
-  project_data_tst %>% 
+project_data <-
+  project_data %>%
     mutate(revol_util = as.numeric(gsub(pattern = "%", replacement = "", x = revol_util))/100)
 ```
 ##Handle NA values
@@ -84,15 +88,14 @@ Proportion of NAs by variable:
 
 ```{r}
 #High proportion of NA
-missing <- 
-  dmap(project_data_tst, .f = is.na) %>% 
-  dmap(sum) %>% 
-  dmap(function(x){x/nrow(project_data_tst)}) %>% 
+missing <-
+  dmap(project_data, .f = is.na) %>%
+  dmap(sum) %>%
+  dmap(function(x){x/nrow(project_data)}) %>%
   gather(key="column",
          value="missing",
          gather=id:repay_fail) %>%
   arrange(desc(missing))
-missing %>% View()
 #
 ```
 
@@ -110,34 +113,34 @@ next_payment_d - although you could transform this to something like 'delinq_las
 #Handling NA for logistic regression
 ```{r}
 #Removing Very high
-project_data_tst <- 
-  project_data_tst %>% select(-mths_since_last_major_derog, -mths_since_last_record, -next_pymnt_d)
+project_data <-
+  project_data %>% select(-mths_since_last_major_derog, -mths_since_last_record, -next_pymnt_d)
 
 #could coalesce mths_since_last_delinq into delinq in last 6 months or such. But we have the Delinq last 2 years varibale which is probably sufficient.
 #Last payment date is probably not important since we already have a variable for if the loan is late, 16-30, 31-120 etc.
 #Last credit pull is probably not useful - I thnk this relates to the blanked credit rating variables.
 #id, member id should not be included.
-project_data_tst <- 
-  project_data_tst %>% select(-mths_since_last_delinq, -last_pymnt_d, -last_credit_pull_d, -id, -member_id)
+project_data <-
+  project_data %>% select(-mths_since_last_delinq, -last_pymnt_d, -last_credit_pull_d, -id, -member_id)
 
 #revol_util is an intersting one. Data dictionary says:
 #Revolving line utilization rate, or the amount of credit the borrower is using relative to all available revolving credit.
 #Wiki definition suggests this is like credit card debt.
 #This could be an important variable.
-project_data_tst %>% filter(is.na(revol_util)) %>% View()
+project_data %>% filter(is.na(revol_util)) %>% View()
 #It's a low number of NAs, only 54. So it makes sense just to remove.
-project_data_tst <- 
-  project_data_tst %>% filter(!is.na(revol_util))
+project_data <-
+  project_data %>% filter(!is.na(revol_util))
 
-project_data_tst %>% nrow()
+project_data %>% nrow()
 ```
 #Date Variables
 ```{r}
 #It's not great to have dates. Really we want to convert them to some number of months since event.
 
 #convert earliest credit line and date approved to credit age
-project_data_tst <- 
-  project_data_tst %>% mutate(credit_age_yrs = difftime(
+project_data <-
+  project_data %>% mutate(credit_age_yrs = difftime(
                                               parse_date_time(paste0('1',issue_d), orders="d!bY!"),
                                               parse_date_time(paste0('1',earliest_cr_line), orders="d!bY!"),
                                               units = 'weeks'
@@ -153,8 +156,8 @@ project_data_tst <-
 #1. the Alpha grade columns are linear combinations of the sub_grade columns
 #2. the model perfectly separates repay_fail?
 ## recoveries > 0 separates repay fail perfectly.
-project_data_tst <-
-  project_data_tst %>% select(-recoveries, -grade, -loan_status, -sub_grade)
+project_data <-
+  project_data %>% select(-recoveries, -grade, -loan_status, -sub_grade, -installment)
 ```
 
 
@@ -162,53 +165,202 @@ project_data_tst <-
 ```{r}
 
 #In order to find correlation we would need to convert all variables to numeric/indicators
-varcoding <- dummyVars(repay_fail ~ . ,data = project_data_tst,fullRank = T)
-train_data <- predict(varcoding, newdata = project_data_tst)
+varcoding <- dummyVars(repay_fail ~ . ,data = project_data,fullRank = T)
+train_data <- predict(varcoding, newdata = project_data)
 dim(train_data) #981 colums
 #Identify high correlations
 cor_train_data <- cor(train_data)
-findCorrelation(cor_train_data, names=TRUE)
+corellated_names <- findCorrelation(cor_train_data, names=TRUE)
 
 #is there anything correlated perfectly with response?
-cor_train_data_reposonse = cor(cbind(project_data_tst$repay_fail, train_data))
+cor_train_data_reposonse = cor(cbind(project_data$repay_fail, train_data))
 findCorrelation(cor_train_data_reposonse, names=TRUE)
 #No.
 ```
 ## Drop correlated columns
 ```{r}
-train_data <- train_data[,-findCorrelation(cor_train_data, names=FALSE)]
-dim(train_data)
+project_data <- project_data[, !(names(project_data) %in% corellated_names) ]
 ```
 
 
 #Variable Importance
 ```{r}
-caret::varImp(model_fit)
+#caret::varImp(model_fit)
 ```
 
 
 #Fit GLM
-#Fit
+##Create data splits for cross-validation
 ```{r}
+train_idx <- createDataPartition(project_data$repay_fail, p=0.6)
+project_data_train <- project_data[train_idx[[1]],]
+test_val_data <- project_data[-train_idx[[1]],]
+test_idx <- createDataPartition(test_val_data$repay_fail, p=0.5)
+project_data_test <- test_val_data[test_idx[[1]],]
+project_data_val <- test_val_data[-test_idx[[1]],]
 
-train_frame <- cbind.data.frame(repay_fail = project_data_tst$repay_fail, as.data.frame(train_data))
 
-model_fit <- glm(data = train_frame,
+```
+
+
+##Fit binomial(link=logit)
+```{r}
+model_fit <- glm(data = project_data_train,
     formula = repay_fail ~ .,
   family = "binomial",
-  control = glm.control(maxit = 50))
-
+  control = glm.control(maxit = 50)
+  )
 #This model get's perfect linear separation if you include the grades.
 ## Specificall mention this scenario!: Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
 
-model_preds = 1 / (1+ (1/exp(predict(model_fit)) ) )
+```
+###Model Resuts
+####Summary
+```{r}
+summary(model_fit)
+```
 
-model_preds[model_preds > 0.5] <- 1
-model_preds[model_preds <= 0.5] <- 0
+####Confusion Matrix
+```{r}
+model_preds_train = 1 / (1+ (1/exp(predict(model_fit)) ) )
+model_preds_train[model_preds_train > 0.5] <- 1
+model_preds_train[model_preds_train <= 0.5] <- 0
 
-caret::confusionMatrix(data = model_preds, reference = project_data_tst$repay_fail)
+caret::confusionMatrix(data = model_preds_train, reference = project_data_train$repay_fail)
+
+model_preds_val = 1 / (1+ (1/exp(predict(model_fit, newdata = project_data_val)) ) )
+model_preds_val[model_preds_val > 0.5] <- 1
+model_preds_val[model_preds_val <= 0.5] <- 0
+
+caret::confusionMatrix(data = model_preds_val, reference = project_data_val$repay_fail)
+```
+
+##Fit binomial(link="probit")
+```{r}
+model_fit_probit_link <- glm(data = project_data_train,
+  formula = repay_fail ~ .,
+  family = binomial(link="probit"),
+  control = glm.control(maxit = 50)
+  )
+```
+### Model Summary
+```{r}
+summary(model_fit_probit_link)
+```
+
+#### Confusion Matrix
+```{r}
+model_preds_train_probit = 1 / (1+ (1/exp(predict(model_fit_probit_link)) ) )
+model_preds_train_probit[model_preds_train_probit > 0.5] <- 1
+model_preds_train_probit[model_preds_train_probit <= 0.5] <- 0
+
+caret::confusionMatrix(data = model_preds_train_probit, reference = project_data_train$repay_fail)
+
+model_preds_val_probit = 1 / (1+ (1/exp(predict(model_fit_probit_link, newdata = project_data_val)) ) )
+model_preds_val_probit[model_preds_val_probit > 0.5] <- 1
+model_preds_val_probit[model_preds_val_probit <= 0.5] <- 0
+
+caret::confusionMatrix(data = model_preds_val, reference = project_data_val$repay_fail)
+```
+
+
+# Comparing Link Funcitons?
+#Old notes p251 for link comparison
+# Goodness of fit?
+##Hosmer-Lemeshow Goodness of Fit (GOF) Test.
+##Cross validation
+#stepwise selection
+```{r}
+#From stepwise regression: AIC 16100
+
+glm(formula = repay_fail ~ `term60 months` + int_rate + `emp_length< 1 year` + `emp_length< 1 year`*annual_inc +
+    `emp_length2 years` + `emp_length6 years` + home_ownershipOTHER +
+    annual_inc + `verification_statusSource Verified` + verification_statusVerified +
+    purposecredit_card + purposedebt_consolidation + purposeeducational +
+    purposehome_improvement + purposehouse + purposemedical +
+    purposeother + purposesmall_business + purposevacation +
+    purposewedding + delinq_2yrs + inq_last_6mths + open_acc +
+    pub_rec + revol_bal + revol_util + total_acc + total_rec_prncp +
+    total_rec_int + last_pymnt_amnt, family = "binomial", data = train_frame_alt,
+    control = glm.control(maxit = 50)) -> mdl
+```
+
+#model diagnostics
+## Influential Observations
+## variable inflation factor
+## mallows cp
+## adjusted r^2
+## James' quantile plot
+```{r}
+model_preds_val = 1 / (1+ (1/exp(predict(model_fit, newdata = project_data_val)) ) )
+model_preds_val_probit = 1 / (1+ (1/exp(predict(model_fit_probit_link, newdata = project_data_val)) ) )
+
+library(ROCR)
+val_pred_ob <- prediction(predictions = model_preds_val, labels = project_data_val$repay_fail)
+perf <- performance(val_pred_ob, measure = "tpr", x.measure = "fpr")
+plot(perf)
+```
+## Gini index
+```{r}
+AUROC <- performance(val_pred_ob, measure = "auc")
+gini <- 2* (AUROC@y.values[[1]] - 0.5)
+#Ratio of model area to random line area * 2 to scale from 0-1
+gini
+```
+
+## Gini for probit
+```{r}
+val_pred_ob_probit <- prediction(predictions = model_preds_val_probit , labels = project_data_val$repay_fail)
+perf_probit <- performance(val_pred_ob_probit, measure = "tpr", x.measure = "fpr")
+plot(perf_probit)
+```
+
+```{r}
+AUROC <- performance(val_pred_ob_probit, measure = "auc")
+gini <- 2* (AUROC@y.values[[1]] - 0.5)
+#Ratio of model area to random line area * 2 to scale from 0-1
+gini
+```
+## Probit vs Logit ROC
+```{r}
+comp_data <- data_frame(
+  px = perf@x.values[[1]],
+  py = perf@y.values[[1]],
+  probx = perf_probit@x.values[[1]],
+  proby = perf_probit@y.values[[1]]
+)
+
+ggplot(comp_data) + 
+  geom_line(aes(x=px,y=py,colour="logit")) + 
+  geom_line(aes(x=probx,y=proby,colour="probit"))
+
+#basically identical prediction quality.
+```
+
+## Jamess Qauntile comaprison
+```{r}
+comp_df <- data_frame(
+  linear_predictor = model_preds_val,
+  response = project_data_val$repay_fail
+)
+
+comp_df %>%
+  arrange(linear_predictor) %>%
+  mutate(pc = ntile(linear_predictor,10)) %>%
+  group_by(pc) %>%
+  summarise(n_response_1 = sum(response), 
+            exp_response_1 = sum(linear_predictor),
+            exp_variance = sum(linear_predictor*(1-linear_predictor)) ) %>%
+  ggplot() + geom_point(aes(x=exp_response_1,y=n_response_1)) +
+  geom_errorbar(aes(y=n_response_1,
+                      x=exp_response_1,
+                      ymax = n_response_1 + 3*sqrt(exp_variance),
+                      ymin = n_response_1 - 3*sqrt(exp_variance)
+                      )) + 
+  geom_abline(slope = 1, intercept = 0)
 
 ```
+
 
 <!-- What I am thinking is Option 3. This is for several reasons: -->
 
@@ -237,7 +389,3 @@ caret::confusionMatrix(data = model_preds, reference = project_data_tst$repay_fa
 <!-- Business: -->
 <!-- Why the industry may prefer one model (ie logit) over others? Because the output is often a scorecard, but the student will not be convert the model to a scorecard else the project will be way too long -->
 <!-- Talk about the variables. The student should think about what other variables might be useful that are not in the dataset. The reason is that in the industry, we often need to construct the modelling dataset ourselves. Some literature review/paper searching will be good for maths student who most likely has not used database before -->
-
-
-
-
