@@ -1,0 +1,193 @@
+\documentclass[11pt,a4paper]{article}
+
+
+% Page margins, A4 page width = 8.27in, page height = 11.69in
+\setlength{\oddsidemargin}{0in}
+\setlength{\evensidemargin}{0in}
+\setlength{\topmargin}{0in}
+\setlength{\headheight}{0in}
+\setlength{\headsep}{0.25in}
+\setlength{\topskip}{0in}
+\setlength{\textwidth}{6.27in}
+\setlength{\textheight}{9.44in}
+\setlength{\footskip}{0in}
+
+
+% Required preambles and packages
+\input{../../../saspreamble}
+\usepackage{fancyhdr}
+\usepackage{bm}
+\usepackage{graphicx}
+
+
+% Additional formatting preferences
+\renewcommand{\labelenumii}{\alph{enumii})}
+\renewcommand{\labelenumiii}{(\roman{enumiii})}
+
+\pagestyle{fancy}
+\lhead{}
+\chead{}
+\rhead{\raggedleft MAB624 Assignment 4\\Semester 2, 2015}
+\lfoot{}
+\cfoot{}
+\rfoot{\thepage}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\footrulewidth}{0cm}
+
+\setlength{\parindent}{0in}
+\setlength{\parskip}{1em}
+
+
+\begin{document}
+
+
+\begin{center}
+    \vspace*{0.35in}
+    \huge\textbf{MAB624 Applied Statistics 2}\\
+    \textbf{Assignment 4}\\
+    \normalsize
+    \vspace*{2em}
+    \textbf{Generalised Linear Models: Counts (weight 15\%)}\\
+    \textbf{Due: 5pm Friday 16 October}
+\end{center}
+
+
+\section*{Background}
+
+The table below summarises the results of a prospective study conducted in Canada on smoking and health.  One of the purposes of the study was to investigate the relationships between smoking habits and mortality from chronic diseases, particularly lung cancer.  The study was initiated by a questionnaire and data on the deaths occurring among the respondents were also collected over a six-year follow-up period.  The table shows the male populations and the numbers of deaths in each of several age groups, classified according to whether or not they were smokers and, if so, what type of smoker.  The data are stored in the data set \texttt{smoking.csv}.
+
+\begin{center}
+    \begin{tabular}{crrcrrcrrcrr}
+        \hline
+            & \multicolumn{2}{c}{}            && \multicolumn{2}{c}{Cigar and} && \multicolumn{2}{c}{Cigarette} && \multicolumn{2}{c}{Cigarette}\\
+            & \multicolumn{2}{c}{Non-smokers} && \multicolumn{2}{c}{pipe only} && \multicolumn{2}{c}{and other} && \multicolumn{2}{c}{only}\\
+        \cline{2-3}
+        \cline{5-6}
+        \cline{8-9}
+        \cline{11-12}
+        Age & Deaths & Pop. && Deaths & Pop. && Deaths & Pop. && Deaths & Pop.\\
+        \hline
+        40--44 &  18 &  656 &&   2 & 145 &&  149 & 4531 && 124 & 3410\\
+        45--49 &  22 &  359 &&   4 & 104 &&  169 & 3030 && 140 & 2239\\
+        50--54 &  19 &  249 &&   3 &  98 &&  193 & 2267 && 187 & 1851\\
+        55--59 &  55 &  632 &&  38 & 372 &&  576 & 4682 && 514 & 3270\\
+        60--64 & 117 & 1067 && 113 & 846 && 1001 & 6052 && 778 & 3791\\
+        65--69 & 170 &  897 && 173 & 949 &&  901 & 3880 && 689 & 2421\\
+        70--74 & 179 &  668 && 212 & 824 &&  613 & 2033 && 432 & 1195\\
+        75--79 & 120 &  361 && 243 & 667 &&  337 &  871 && 241 &  436\\
+        80+    & 120 &  274 && 253 & 537 &&  189 &  345 &&  63 &  113\\
+        \hline
+    \end{tabular}
+\end{center}
+
+A description of the variables in the data set is as follows:
+\begin{center}
+    \begin{tabular}{ll}
+        \hline
+        \textbf{Variable}   & \textbf{Description}\\
+        \hline
+        \texttt{Age}        & Age group (ordinal or continuous)\\
+        \texttt{Smoke}      & Type of smoker: \\
+                            & no = non-smoker\\
+                            & cigarPipeOnly = cigar and pipe only\\
+                            & cigarettePlus = cigarette and other\\
+                            & cigaretteOnly = cigarette only\\
+        \texttt{Deaths}     & Number of male deaths\\
+        \texttt{Pop}        & Number of males in respective population \textbf{(exposure variable)}\\
+        \hline
+    \end{tabular}
+\end{center}
+
+
+\newpage
+\section*{Task}
+
+Carry out an analysis of the data to investigate how the rate of deaths depends on age and smoking status by developing an appropriate Poisson generalised linear model for the \textbf{rate of deaths}, with \texttt{Age} and \texttt{Smoke} as explanatory variables.  Use the \texttt{GENMOD} procedure in SAS with a \texttt{log link} to carry out your analysis.
+
+In developing your model you are \textbf{not} expected to:
+\begin{enumerate}
+    \item Investigate the use of alternative link functions.  You have been instructed to use the logarithmic link function (only).
+    \item Investigate possible transformations of the explanatory variables.  If your model diagnostic plots suggest that transformation(s) may be required, then you just need to comment on this.
+    \item Remove observations from the data set.  But you should comment on any unusual observations.
+\end{enumerate}
+
+Reports can be submitted individually or as a group of no more than three students.  Write the \textbf{names}, \textbf{student numbers} and \textbf{email addresses} of all contributors on your report so that marks can be awarded and feedback provided to all contributors.
+
+You are required to write up your investigation as a \textbf{word processed report}.  You may use any word processor you like.  However, you will need to choose a word processor that can write equations, e.g., Microsoft Word or LaTeX.  You must submit your report as a \textbf{PDF file}.  See the sections on Report Specifications and Submitting your Report for further details on setting out and submitting your report.  Note that it is not sufficient to simply give your final model and SAS code, you must communicate your modelling approach, model assessment and model interpretations within your report, see the section on Suggested Approach for guidance.
+
+
+\newpage
+\section*{Suggested Approach}
+
+To get you started, below are suggestions as to how you might approach this data analysis problem.  Please note that these are only \emph{suggestions}, they do not form an exhaustive list of all steps that may be required in your investigation.
+
+\begin{enumerate}
+    \item Carry out some exploratory data analyses by producing an appropriate plot(s) of the sample data.
+    \item Develop an appropriate generalised linear model relating the response to the explanatory variables.  In assessing statistical significance of terms you should allow for under- or over-dispersion if appropriate.
+    \item Assess the goodness of fit of your models.
+    \item Examine and interpret diagnostic statistics and plots to check the validity of your models.
+    \item \texttt{Age} can be treated as an ordinal categorical variable or a continuous variable in this data set.  In developing your model, consider whether a model that includes \texttt{Age} treated as a continuous variable is a better/worse model than a model that includes \texttt{Age} as a categorical variable.
+    \item Your findings should include, amongst other things, a clear statement of your final model, interpretation of your model, an appropriate measure of goodness of fit of your model, and a graphical summary if appropriate.
+\end{enumerate}
+
+
+\newpage
+\section*{Report Specifications}
+
+\begin{enumerate}
+    \item As with all scientific reports, your report should be written in sections.  One example might be\\
+        \\
+        Report
+        \begin{enumerate}
+        \item[1] Introduction
+        \item[2] Model
+            \begin{enumerate}
+            \item[2.1] Distribution
+            \item[2.2] Link
+            \item[2.3] Model equation
+            \end{enumerate}
+        \item[3] Model Fitting
+            \begin{enumerate}
+                \item[3.1] Model selection
+                \item[3.2] Parameter estimates
+                \item[3.3] Goodness of fit and model validity
+            \end{enumerate}
+        \item[4] Conclusions
+        \end{enumerate}
+        Appendix
+        \begin{enumerate}
+        \item[A] SAS Code
+        \end{enumerate}
+    \item Your \textbf{SAS code} should be placed \textbf{in an appendix} at the end of your report.  Your code should be \textbf{written in a logical order}.  You must briefly \textbf{comment your SAS code} so that it is clear what you are trying to do in each segment of code.  You \textbf{should not include} any \textbf{irrelevant code}.
+    \item Only put \textbf{\emph{relevant} SAS output in the body of your report} along with your written comments.  Put the \textbf{remainder of the output in a separate PDF file as supplementary material}.
+\end{enumerate}
+
+
+\newpage
+\section*{Submitting your Assessment}
+
+By submitting your assessment you affirm that the work is your own except where the words of others are specifically acknowledged through the use of inverted commas and in-text references and that this assessment has not been submitted in whole or in part for any other unit at QUT or any other institution.
+
+\textbf{Individual assessment submission:} If you completed the assessment by yourself, and not in a group, then submit your assessment as per the instructions below.
+
+\textbf{Group assessment submission:} Only one submission is required per group.  Nominate one group member to submit your assessment as per the instructions below.
+
+\begin{enumerate}
+    \item Give your report PDF file, that contains your report, the name \textbf{report.pdf} and give your supplementary material PDF file (if you have one), that contains your additional SAS output (if any), the name \textbf{supplementary.pdf}
+    \item Zip your files into one zip file.  Give the zipped file a name with the format
+        \begin{center}
+        \textbf{studentnumber\_ surname\_ firstname.zip}
+        \end{center}
+        For example, Mary Smith has student number 1234567 so she would name her zipped file
+        \begin{center}
+        \textbf{1234567\_ smith\_ mary.zip}
+        \end{center}
+    \item Submit your zipped file through the MAB624 Blackboard site by going to
+        \begin{center}
+            \textbf{Assessment $>$ Assignment 4}
+        \end{center}
+        Note that you need to choose the `submit' button and not the `save' button.  If multiple submission are received, only the most recent submission will be marked.
+\end{enumerate}
+
+
+\end{document} 

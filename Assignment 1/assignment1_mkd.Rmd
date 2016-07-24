@@ -11,13 +11,30 @@ library(dplyr)
 crime_data <- read_csv('~/Documents/mxb344/MAB624_Sem 2 2015_THOMPSON/assessment/assignment_2/punishment.csv')
 
 #Exploratory analysis
-pairs(crime_data)
+
 
 crime_data_mod <-
   crime_data %>% 
   mutate(total_crimes = Pop*Crime) %>%
   select(-Crime)
+
+pairs(crime_data_mod %>% mutate(log_crime = log(total_crimes)))
+# Needs to be linear on the scale of log(crime)!
 ```
+Looks Like pop is related super-linearly with population
+```{r}
+crime_data_mod <- 
+  crime_data_mod %>% mutate(Pop_sq = Pop^2)
+```
+
+
+#Proprocessing check for correlation
+```{r}
+library(caret)
+caret::findCorrelation(cor(crime_data_mod %>% select(-total_crimes)), names = T)
+
+```
+Sugegsts ignore Po1, it is highly correlated with Po2.
 
 #Naive Poisson fit
 ```{r}
@@ -74,11 +91,12 @@ This is the generalised VIF.
 
 
 #Offset Poisson Fit
+The offset idea is wrong... it's the number of criminals it's the number of offenses.
 ```{r}
 offset_fit <- crime_fit <- glm(family = poisson(link="log"),
                  data = crime_data_mod,
-                 formula = total_crimes ~ M + So + Ed + Po2 + LF + M.F + NW + 
-                   U1 + U2 + Wealth + Ineq + Prob + Time + offset(log(Pop*100000))
+                 formula = total_crimes ~ M  + Ed + Po2 + LF + M.F + NW + 
+                   U1 + U2 + Wealth + Wealth^2 + Wealth*Po2 + Prob*Po2 + Wealth*Ineq + Ineq + Prob + Time + offset(log(Pop*100000))
                  )
 
 summary(offset_fit)
@@ -100,38 +118,58 @@ plot(x=offset_fit$fitted.values, y=resid(offset_fit, type="deviance"))
 qoffset_fit <- crime_fit <- glm(family = quasipoisson(link="log"),
                  data = crime_data_mod,
                  formula = total_crimes ~ M + So + Ed + Po2 + LF + M.F + NW + 
-                   U1 + U2 + Wealth + Ineq + Prob + Time + offset(log(Pop))
+                   U1 + U2 + Wealth + Ineq + Prob + Time + offset(log(Pop*100000))
                  )
 summary(qoffset_fit)
 ```
-Still looking really shit.
+Still looking pretty shit.
 
-# Original crime_data
+# Tuned Model
 ```{r}
-orig_fit <- glm(family = poisson(link="log"),
-                 data = crime_data,
-                 formula = Crime ~ M + So + Ed + Po1 + LF + M.F +
-                  + NW + U1 + U2 + Wealth + Ineq + Prob + Time
+crime_fit_tune <- glm(family = poisson(link="log"),
+                 data = crime_data_mod,
+                 formula = total_crimes ~ M + So + Ed + Po2 +
+                   LF + M.F + Pop + I(Pop^2) + NW + I(NW^2) + U1 + U2 + 
+                   Wealth + Prob + Time
                  )
-summary(orig_fit)
+
+summary(crime_fit_tune)
 ```
-## Diagnostics
-### Test of Scaled Residual Deviance
-#### Pearson Residual Deviance
+See if step can help
 ```{r}
-pchisq(sum(resid(orig_fit, type="pearson")^2) , df = orig_fit$df.residual, lower.tail = FALSE)
+library(MASS)
+step_obj <- stepAIC(object = crime_fit_tune, scope = total_crimes ~ .^2)
+
+
+plot(step_obj)
+summary(step_obj)
 ```
-#### Plot Deviance Residuals
+## Check diagnostics
+### Dispersion
 ```{r}
-plot(x=orig_fit$fitted.values, y=resid(orig_fit, type="deviance"))
+step_obj$call
+glm(formula = total_crimes ~ M + So + Ed + Po2 + LF + M.F + Pop + 
+    I(Pop^2) + NW + I(NW^2) + U1 + U2 + Wealth + Prob + Time + 
+    M.F:Time + M.F:NW + So:NW + Pop:I(Pop^2) + Prob:Time + M.F:Pop + 
+    So:M.F + So:Ed + Pop:Prob + M:So + Po2:Wealth + U1:U2 + M.F:I(NW^2) + 
+    Po2:Prob + LF:M.F + LF:U2 + M:U2 + U1:Time + Wealth:Time + 
+    LF:Wealth + Ed:Po2 + NW:U2 + M:Pop + LF:I(NW^2) + So:U2 + 
+    I(Pop^2):I(NW^2) + LF:NW + Po2:I(NW^2), family = quasipoisson(link = "log"), 
+    data = crime_data_mod) %>% summary()
 ```
-### Check free dispersion
+A bit under dispersed.
+### Pearson Corellation
 ```{r}
-qorig_fit <- glm(family = quasipoisson(link="log"),
-                 data = crime_data,
-                 formula = Crime ~ M + So + Ed + Po1 + LF + M.F +
-                  + NW + U1 + U2 + Wealth + Ineq + Prob + Time
-                 )
-summary(qorig_fit)
+pchisq( sum(residuals(step_obj, type="pearson")^2) , df = step_obj$df.residual   )
 ```
 
+#Limited Step Model
+```{r}
+
+lm_mod %>% summary()
+
+step(lm(log(total_crimes) ~ I(Pop^2), data=crime_data_mod), scope = log(total_crimes) ~ M + So + Ed + Po2 +
+                   LF + M.F + Pop + I(Pop^2) + NW + I(NW^2) + U1 + U2 + 
+                   Wealth + Prob + Time) %>% summary()
+```
+So it turns out a plain old linear model fits this data just great.

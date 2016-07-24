@@ -1,0 +1,64 @@
+---
+title: "Inury_assignment"
+output: html_document
+---
+```{r}
+
+library(readr)
+library(dplyr)
+
+injury <- read_csv("~/Documents/mxb344/MAB624_Sem 2 2015_THOMPSON/assessment/assignment_4/injuries.csv")
+injury <- 
+  injury %>% mutate(Days = Hours/8)
+
+naive_fit <- glm(Injuries ~ Experience + Safety + offset(log(Days)),
+                 family = poisson(link="log"),
+                 data=injury)
+summary(naive_fit)
+```
+
+# Diagnostics
+### Pearson Residual
+```{r}
+test_stat <- sum(residuals(naive_fit, type="pearson")^2)
+test_stat
+```
+```{r}
+pchisq(test_stat, naive_fit$df.residual, lower.tail = F)
+```
+Fits Really Well!
+
+### Plots
+```{r}
+plot(naive_fit)
+plot(naive_fit$fitted.values, residuals(naive_fit,type="deviance"))
+plot(naive_fit$fitted.values, naive_fit$residuals)
+```
+
+
+#Interpretation
+##Relative risk
+#Get the unit right for poisson!
+#Use crime example.
+No std process increases injury rate by exp(.20985)
+```{r}
+exp(.20985) 
+```
+That's 23% increase in rate of injury
+
+#How many more hours can an inexperienced worker (< 1) who works in the certifcation and review framework
+#expect to work before injury than a worker who works in a regime with no standardised process for equipment training?
+```{r}
+r_CR <- exp(-5.71159 + .04776)
+r_no_std <- exp(-5.71159 + .20985)
+```
+
+### Dispersion
+```{r}
+disp_fit <- glm(Deaths ~ Age + Smoke + offset(log(Pop)),
+                family = quasipoisson(link="log"),
+                data=smoker)
+summary(disp_fit)
+```
+
+

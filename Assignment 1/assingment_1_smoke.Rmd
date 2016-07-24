@@ -1,0 +1,56 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r}
+library(readr)
+library(dplyr)
+smoker <- read_csv("~/Documents/mxb344/MAB624_Sem 2 2015_THOMPSON/assessment/assignment_4/smoking.csv")
+smoker
+
+
+```
+```{r}
+naive_fit <- glm(Deaths ~ Age + Smoke + offset(log(Pop)),
+                family = poisson(link="log"),
+                data=smoker)
+summary(naive_fit)
+```
+## Diagnostics
+### Pearson Residual
+```{r}
+test_stat <- sum(residuals(naive_fit, type="pearson")^2)
+test_stat
+```
+We'd be looking for 24. Model is perhaps slightly under dispersed?
+```{r}
+pchisq(test_stat, naive_fit$df.residual, lower.tail = F)
+```
+No evidence of poor fit.
+
+### Plots
+```{r}
+plot(naive_fit)
+plot(naive_fit$fitted.values, residuals(naive_fit,type="deviance"))
+plot(naive_fit$fitted.values, naive_fit$residuals)
+
+
+```
+### Dispersion
+```{r}
+disp_fit <- glm(Deaths ~ Age + Smoke + offset(log(Pop)),
+                family = quasipoisson(link="log"),
+                data=smoker)
+summary(disp_fit)
+```
+
+
+
+
+#Compare No Offset
+```{r}
+nooff_fit <- glm(Deaths ~ Age + Smoke,
+                family = poisson(link="log"),
+                data=smoker)
+summary(nooff_fit)
+```
