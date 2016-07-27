@@ -1,0 +1,138 @@
+---
+title: "MXB344 Week 1 Slides"
+author: "Miles McBain (ACEMS, QUT)"
+date: "July 27, 2016"
+output:
+  ioslides_presentation:
+    css: style.css
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+```
+
+#Welcome 
+
+MXB344 Lecture 1
+
+##Modelling Non-Normal Data with Generalised Linear Models
+
+As taught by Miles McBain
+
+email: m.mcbain@qut.edu.au
+
+twitter: @milesmcbain
+
+github: milesmcbain
+
+# Personal Introductions |About me. About you.
+
+
+## About this unit
+* This is The capstone unit for statistics -it is the first time it has run in this form.
+* It contains W.I.L - Work Integrated Learning
+* You will engage with an industry partner whilst undertaking a realistic industry project: Credit Risk Modelling
+
+![](http://www.boq.com.au/media/rebranding/images/logo_BOQ.png)
+
+## Cheerful Statistics
+* There are 0 exams in this course.
+* There are $W \sim N(10,1)$ Weeks of content planned.
+* 80% of the material will be directly relevent to your assignments.
+
+## Your Assignments
+* Assignment 1 - Theoretical (Traditional), count data. Individual, 40%.
+* WIL Project - Credit Risk Model, binary data. Groups, 60%.
+  + -->Presentation 20% + Plan/Report/SOAP/Review 40%
+
+##The Reproducibility Issue
+
+Begly, Ioannidis (2015) [Improving the Standard for Basic and Preclinical Research](http://circres.ahajournals.org/content/116/1/116.long)
+
+* Empirical estimates for irreproducibility in high profile biomedical journals: 75% - 90%
+* 85% of biomedical research wasted
+* Bad Causes: confirmation bias, failure to use controls, selective reporting, bad statistics 
+
+## Computers are not helping
+
+Marwick (2015) [How computers broke science and what we can do to fix it](https://theconversation.com/how-computers-broke-science-and-what-we-can-do-to-fix-it-49938)
+
+* Every point and click is an unrecorded step in your analysis
+
+> An article about computational science in a scientific publication is not the scholarship itself, it is merely advertising of the scholarship. The actual scholarship is the complete software development environment and the complete set of instructions which generated the figures.
+
+## Solutions
+
+From Science:
+
+Wilson G, Aruliah DA, Brown CT, Chue Hong NP, Davis M, Guy RT, et al. (2014) [Best Practices for Scientific Computing](http://journals.plos.org/plosbiology/article?id=10.1371/journal.pbio.1001745).
+
+From Business:
+
+Sharma, Overgoor (2016) [Scaling Knowledge at Airbnb](https://medium.com/airbnb-engineering/scaling-knowledge-at-airbnb-875d73eff091#.ch3jw2leh)
+
+##Our way of working
+
+* We build analysis pipelines collaboratively
+* Code + documentation + analysis live together wherever possible
+* We use version control
+* We aim for interprebility and reuse.
+
+Tools: [Rmarkdown](rmarkdown.rstudio.co), [Github](https://github.com/)
+
+#Introduction to GLMs
+
+## Hello old friend | A linear model {.codefont}
+```{r, echo=FALSE}
+library(dplyr)
+data("mtcars")
+lm(data = mtcars,
+   formula = mpg ~ cyl + wt + am) %>%
+  summary()
+#RSE = ssr / n-p
+#R2 = 1 - ssr/tss
+#1- sum(modl$residuals^2) / (sum( (mtcars$mpg - mean(mtcars$mpg))^2 ))
+#F = MSEmodel / MSEerror
+#F = ((sum((mtcars$mpg - mean(mtcars$mpg))^2) - sum(modl$residuals^2))/3) / (sum(modl$residuals^2)/28)
+```
+
+## New look | A general linear model {.codefont}
+```{r, echo=FALSE}
+glm(data = mtcars,
+   formula = mpg ~ cyl + wt + am,
+   family = gaussian(link="identity") 
+    ) %>%
+  summary()
+# Observations
+# Dispersion = rse from lm ^2
+# Null deviance = total sum of squares
+# Residual deviance = sum of squared residuals
+```
+
+## Building Blocks of Generalised Linear Models
+* link function - monotonic and differentiable 
+* a linear predictor: $$ \eta = X^{T}\matrix{\beta}$$
+* A distribution from the exponential family for the $Yi$s
+
+## Second Last Slide | Exponential Family
+Reading: MAB624 Notes P79 - Put up on Blackboard after lecture.
+
+All family members have this form: $$f(y ; \theta, \phi) = exp\left( \frac{y\theta - \kappa(\theta)}{a(\phi)} + c(y,\phi)\right) $$
+
+**Group Exercise:** Can we rearrange $N(\mu,sigma^2)$ to this form?
+
+
+
+## Last Slide
+
+**Homework:** Setup a github account, create a repository and commit some R code. 
+
+Learn Github via lynda! 
+
+Login here:
+https://ezp01.library.qut.edu.au/login/lynda
+
+Go Here:
+https://www.lynda.com/GitHub-tutorials/GitHub-Web-Designers/162276-2.html
+
