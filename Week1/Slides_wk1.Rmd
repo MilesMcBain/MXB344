@@ -9,7 +9,6 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library(dplyr)
 ```
 
 #Welcome 
@@ -85,12 +84,12 @@ Tools: [Rmarkdown](rmarkdown.rstudio.co), [Github](https://github.com/)
 
 ## Hello old friend | A linear model {.codefont}
 ```{r, echo=FALSE}
-library(dplyr)
 data("mtcars")
-lm(data = mtcars,
-   formula = mpg ~ cyl + wt + am) %>%
-  summary()
+modl <- lm(data = mtcars,
+   formula = mpg ~ cyl + wt + am)
+summary(modl)
 #RSE = ssr / n-p
+#I used this calculation in class: sqrt(sum(modl$residuals^2) / 28)
 #R2 = 1 - ssr/tss
 #1- sum(modl$residuals^2) / (sum( (mtcars$mpg - mean(mtcars$mpg))^2 ))
 #F = MSEmodel / MSEerror
@@ -99,11 +98,11 @@ lm(data = mtcars,
 
 ## New look | A general linear model {.codefont}
 ```{r, echo=FALSE}
-glm(data = mtcars,
+summary( glm(data = mtcars,
    formula = mpg ~ cyl + wt + am,
-   family = gaussian(link="identity") 
-    ) %>%
-  summary()
+   family = gaussian(link="identity") ) )
+#We also tried     
+
 # Observations
 # Dispersion = rse from lm ^2
 # Null deviance = total sum of squares
