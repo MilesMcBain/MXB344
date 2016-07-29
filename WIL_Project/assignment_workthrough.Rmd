@@ -210,8 +210,8 @@ model_fit <- glm(data = project_data_train,
   family = "binomial",
   control = glm.control(maxit = 50)
   )
-#This model get's perfect linear separation if you include the grades.
-## Specificall mention this scenario!: Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+#This model get perfect linear separation if you include the grades.
+## Mention this scenario!: Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
 
 ```
 ###Model Resuts
@@ -361,31 +361,31 @@ comp_df %>%
 
 ```
 
+#Burton Wu's assignment ideas
+What I am thinking is Option 3. This is for several reasons:
 
-<!-- What I am thinking is Option 3. This is for several reasons: -->
+Introduce Kaggle to the students
+However the data size is too big which means classical statistics (eg p-values) will fail
+Consequently, I am proposing to modify the dataset such that it has say around 5,000 observations only
+Around the "max" where you can relay on p-values but big enough to look for an alternative measures
+Add "test data" (or other unusual data) into the dataset which the students need to identify and remove
+Make some records contain missing values
+Add a couple categorical variables
+Assignment can be very similar to the insurance group? assignment from a few years ago (ie a pretty standard assignment) but with the following changes:
 
-<!-- Introduce Kaggle to the students -->
-<!-- However the data size is too big which means classical statistics (eg p-values) will fail -->
-<!-- Consequently, I am proposing to modify the dataset such that it has say around 5,000 observations only -->
-<!-- Around the "max" where you can relay on p-values but big enough to look for an alternative measures -->
-<!-- Add "test data" (or other unusual data) into the dataset which the students need to identify and remove -->
-<!-- Make some records contain missing values -->
-<!-- Add a couple categorical variables -->
-<!-- Assignment can be very similar to the insurance group? assignment from a few years ago (ie a pretty standard assignment) but with the following changes: -->
+Similar to prior assignments, the student needs to run all three models: logit, probit, and cloglog
+Goodness of fit - likelihood ratio, scaled deviance, etc
+Model adequacy - look at transformation, add interaction, residual, etc
+Final model selection
+However, the key additions to the assignment are:
 
-<!-- Similar to prior assignments, the student needs to run all three models: logit, probit, and cloglog -->
-<!-- Goodness of fit - likelihood ratio, scaled deviance, etc -->
-<!-- Model adequacy - look at transformation, add interaction, residual, etc -->
-<!-- Final model selection -->
-<!-- However, the key additions to the assignment are: -->
-
-<!-- Large Dataset: -->
-<!-- Discuss the impact to p-value for example when dealing with large dataset -->
-<!-- Make use of validation sample - this "machine learning" concept is not currently being taught in maths -->
-<!-- Use of Gini and Information Value (IV) in addition to p-value -->
-<!-- Data Issue: -->
-<!-- Need to handle special values, missing values, etc -->
-<!-- Need to exclude "test" or staff observations for example -->
-<!-- Business: -->
-<!-- Why the industry may prefer one model (ie logit) over others? Because the output is often a scorecard, but the student will not be convert the model to a scorecard else the project will be way too long -->
-<!-- Talk about the variables. The student should think about what other variables might be useful that are not in the dataset. The reason is that in the industry, we often need to construct the modelling dataset ourselves. Some literature review/paper searching will be good for maths student who most likely has not used database before -->
+Large Dataset:
+Discuss the impact to p-value for example when dealing with large dataset
+Make use of validation sample - this "machine learning" concept is not currently being taught in maths
+Use of Gini and Information Value (IV) in addition to p-value
+Data Issue:
+Need to handle special values, missing values, etc
+Need to exclude "test" or staff observations for example
+Business:
+Why the industry may prefer one model (ie logit) over others? Because the output is often a scorecard, but the student will not be convert the model to a scorecard else the project will be way too long
+Talk about the variables. The student should think about what other variables might be useful that are not in the dataset. The reason is that in the industry, we often need to construct the modelling dataset ourselves. Some literature review/paper searching will be good for maths student who most likely has not used database before

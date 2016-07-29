@@ -14,7 +14,7 @@ CUSTOMER_LOAN_SCRAMBLE <- CUSTOMER_LOAN %>% sample_n(2153) %>% bind_rows(CUSTOME
 CUSTOMER_LOAN_HIST_SCRAMBLE <- CUSTOMER_LOAN_HISTORY %>% sample_n(925) %>% bind_rows(CUSTOMER_LOAN_HISTORY) %>% sample_frac(.95)
 
 #Add Some TEST data outliers
-test_data = read_csv('~/repos/mxb344/WIL_Project/data/TEST_DATA.csv')
+test_data = read_csv('~/repos/MXB344/WIL_Project/data/TEST_DATA.csv')
 
 CUSTOMER_LOAN_SCRAMBLE <-
   test_data %>% select(id:dti) %>% bind_rows(CUSTOMER_LOAN_SCRAMBLE)
@@ -24,7 +24,8 @@ CUSTOMER_LOAN_HIST_SCRAMBLE  <-
 
 
 #Write data pieces
-write_csv(x=CUSTOMER_LOAN_SCRAMBLE, path='~/repos/mxb344/WIL_Project/data/CUSTOMER_LOAN.csv')
-write_csv(x=CUSTOMER_LOAN_HIST_SCRAMBLE, path='~/repos/mxb344/WIL_Project/data/CUSTOMER_LOAN_HISTORY.csv')
+write_csv(x=CUSTOMER_LOAN_SCRAMBLE, path='~/repos/MXB344/WIL_Project/data/CUSTOMER_LOAN.csv')
+write_csv(x=CUSTOMER_LOAN_HIST_SCRAMBLE, path='~/repos/MXB344/WIL_Project/data/CUSTOMER_LOAN_HISTORY.csv')
+
 
 
