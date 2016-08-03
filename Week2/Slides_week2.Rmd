@@ -1,0 +1,163 @@
+---
+title: "MXB344 Week 2 Slides"
+author: "Miles McBain"
+date: "3 August 2016"
+output:   
+  ioslides_presentation:
+    css: style.css
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Welcome 
+
+MXB344 Lecture 2
+
+## Housekeeping
+* Recordings will be made, sort of.
+* Consultation hours: email to arrange appt Thursday or Friday.
+* The prac room is a 'collaborative learning space', there are C.O.W.s
+    + BYO laptop for optimum collaboration.
+
+## Recap | Last week we...
+* Introduced reproducibility
+* Fit a equivalent normal linear models in R using `glm` and `lm`
+* Began looking at the anatomy of GLMs
+* Got acquaited with github... ? (homework).
+
+## Building Blocks of Generalised Linear Models
+* link function - monotonic and differentiable 
+* a linear predictor: $$ \eta = X^{T}\beta$$
+* A distribution from the exponential family for the $Yi$s
+
+Result:
+$$g(\mu_{i}) = \eta_{i} = \beta_{0} + X_{1}\beta_{1} + X_{2}\beta_{2} + ...$$
+
+##Exponential Family
+Reading: MAB624 Notes P79 - Put up on Blackboard after lecture.
+
+All family members have this form: $$f(y ; \theta, \phi) = exp\left( \frac{y\theta - \kappa(\theta)}{a(\phi)} + c(y,\phi)\right) $$
+
+**Group Exercise:** Can we rearrange $N(\mu,\sigma^{2})$ to this form?
+
+**Motivation**: The exponential family form allows us to create a generalised likelihood for many common distributions. This implies the existence of a general likelihood-based fitting technique.
+
+##What we learned
+We arranged the Normal distribution in it's **cannonical parameterisation** and found:
+
+* The **canonical parameter**, $\theta = \mu$
+* The **cumulant function**, $\kappa(\theta) = \frac{\mu^{2}}{2}$
+* $a(\phi) = \sigma^{2}$
+* The **dispersion**, $\phi = ?$
+
+##What if I told you...
+ $a(\phi) = \frac{\phi}{W}$ (usual form)
+ 
+ Where $W$ is a vector of weights s.t. for each $y_{i}$:
+ 
+ $a(\phi) = \frac{\phi}{wi}$
+ 
+ and:
+ 
+ * $w_{i}$ is the prior weight that corrects for differences in variance associated with individual observations.
+ * For most distributions $w_{i} = 1$
+ * $w_{i} \ne 1$ is associated with distributions over groups, e.g. when modelling proportion of success or failure.
+ 
+##Other Notable Results
+ From p79 of MAB624 notes with proof on p92,93.
+ 
+ $E[Y] = \kappa'(\theta)$
+ 
+ $Var[Y] = a(\theta)\kappa''(\theta)$
+ 
+ and by definition:
+ 
+ $\kappa'(\theta) = \tau(\theta) = \mu$
+ 
+ $\theta = \tau^{-1}(\mu)$
+
+##The Canonical Link Function
+ 
+* We call $\tau^{-1}()$ the **canonical link function** for the exponential family distribution under consideration. 
+* If we choose the link function for our GLM s.t. $g()=\tau^{-1}()$, the equation to solve for $\beta$ is simplified. (example coming) 
+* For this reason it is a traditional choice. It is not guaranteed to fit the best.
+
+##The Variance Function
+
+* Using the canonical link we can create an equation that relates the variance to the mean (from prev slide):
+
+$$V(\mu) = \kappa''(\tau^{-1}(\mu))$$
+
+$$Var[Y] = a(\phi)V(\mu)$$
+
+##Example Time
+
+**Group Exercise:** Can we rearrange $Pois(\lambda)$ into canonical form?
+
+**Motivation**: This relates to a question on your assignment. Also, we probably need to turn your brains back on.
+
+#Model Fitting
+
+##A Function for $\beta$ 
+From p87 of MAB624 notes.
+
+$$f(y ; \theta, \phi) = exp\left( \frac{y\theta - \kappa(\theta)}{a(\phi)} + c(y,\phi)\right) $$
+
+$$f(y ; \mu, \phi) = exp\left( \frac{y\tau^{-1}(\mu) - \kappa(\tau^{-1}(\mu))}{a(\phi)} + c(y,\phi)\right)$$
+
+$f(y ; \beta, \phi) =$ 
+$$exp\left( \frac{y\tau^{-1}(g^{-1}(x^{T}\beta)) - \kappa(\tau^{-1}(g^{-1}(x^{T}\beta)))}{a(\phi)} + c(y,\phi)\right)$$
+
+##Using Canonical Link
+if $g(\mu) = \tau^{-1}(\mu) = \eta$, then:
+
+$$f(y ; \beta, \phi) = exp\left( \frac{yx^{T}\beta - \kappa(x^{T}\beta)}{a(\phi)} + c(y,\phi)\right)$$
+
+* How would this look for our Poisson example case?
+
+##Solving for $\beta$
+
+From the likelihood for $\beta$:
+
+$$L(\beta; y, \phi) = \prod exp\left( \frac{yx_{i}^{T}\beta - \kappa(x_{i}^{T}\beta)}{a(\phi)} + c(y_{i},\phi)\right)$$
+
+To the log-likelihood:
+
+$$l(\beta; y, \phi) = \sum \left( \frac{yx_{i}^{T}\beta - \kappa(x_{i}^{T}\beta)}{a(\phi)} + c(y_{i},\phi)\right)$$
+
+To a vector of $\frac{dl}{d\beta_{i}}$'s and solve! Easy... for a computer.
+
+#Assessing Model Fit
+
+##Recall from last week | A general linear model {.codefont}
+```{r, echo=FALSE}
+summary( glm(data = mtcars,
+   formula = mpg ~ cyl + wt + am,
+   family = gaussian(link="identity") ) )
+#We also tried     
+
+# Observations
+# Dispersion = rse from lm ^2
+# Null deviance = total sum of squares
+# Residual deviance = sum of squared residuals
+```
+
+##Defining Scaled Residual Deviance 
+$$\hat{D}* = \frac{2( l(\tilde{\mu}; y, \phi) - l(\hat{\mu}; y, \phi))}{\phi}$$
+ 
+or:
+
+$$-\frac{2}{\phi} log \left( \frac{L(\tilde{\mu}; y, \phi)}{L(\hat{\mu}; y, \phi)}\right)$$ - a likelihood ratio!
+ 
+Where $\tilde{\mu}_{i} = y_{i}$ - A perfect but complex 'saturated' model.
+
+And $\hat{\mu}_{i} \approx y_{i}$ - A regular model, imperfect, but simple (hopefully).
+
+##Analysis of Deviance | Final Slide
+* We can use the scaled residual deviance as a fitting measure on it's own. It has an assymptotic chi-squared distribution. (more next week)
+* We can alo compare the this quantity with that of another model.
+   + The common reference model is the 'null' model. It has only 1 parameter.
+   + 'nested' model comparissons are also common.
+ 
