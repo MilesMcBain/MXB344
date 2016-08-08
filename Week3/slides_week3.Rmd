@@ -1,0 +1,39 @@
+---
+title: "MXB344 Week 3 Slides"
+author: "Miles McBain"
+date: "6 August 2016"
+output:   
+  ioslides_presentation:
+    css: ../style.css
+---
+
+
+#Welcome 
+
+MXB344 Lecture 3
+
+## Recall From Last Week... | Scaled Residual Deviance
+
+$$\hat{D}* = \frac{2( l(\tilde{\mu}; y, \phi) - l(\hat{\mu}; y, \phi))}{\phi}$$
+
+$$\hat{D}* = -\frac{2}{\phi} log \left( \frac{L(\hat{\mu}; y, \phi)}{L(\tilde{\mu}; y, \phi)}\right)$$
+
+## Making it concrete | Normal Example
+
+For 
+
+
+##Recall from last week | A general linear model {.codefont}
+```{r, echo=FALSE}
+normal_glm_fit <- glm(data = mtcars,
+   formula = mpg ~ cyl + wt + am,
+   family = gaussian(link="identity") )
+
+
+#We also tried     
+
+# Observations
+# Dispersion = rse from lm ^2
+# Null deviance = total sum of squares
+# Residual deviance = sum of squared residuals
+```

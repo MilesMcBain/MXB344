@@ -4,7 +4,7 @@ author: "Miles McBain"
 date: "3 August 2016"
 output:   
   ioslides_presentation:
-    css: style.css
+    css: ../style.css
 ---
 
 ```{r setup, include=FALSE}
