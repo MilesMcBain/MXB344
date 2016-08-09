@@ -6,11 +6,20 @@ output:
   ioslides_presentation:
     css: ../style.css
 ---
+```{r, include=FALSE}
+library(AER)
+data(DoctorVisits)
+```
 
 
 #Welcome 
 
 MXB344 Lecture 3
+
+## Recapping | Exponential Family
+* Last lecture dug into the how the exponential family fits into the GLM framework
+    + The [exponential family](https://en.wikipedia.org/wiki/Exponential_family) contains all your usual favourites: Exponential, Normal, Poisson, Gamma, Beta, Binomial, etc.
+    + This course will deal mainly with Poisson and Binomial. Your assignments will apply these.
 
 ## Recall From Last Week... | Scaled Residual Deviance
 
@@ -18,22 +27,85 @@ $$\hat{D}* = \frac{2( l(\tilde{\mu}; y, \phi) - l(\hat{\mu}; y, \phi))}{\phi}$$
 
 $$\hat{D}* = -\frac{2}{\phi} log \left( \frac{L(\hat{\mu}; y, \phi)}{L(\tilde{\mu}; y, \phi)}\right)$$
 
+**Note**: I think I had the ratio upsidedown last week.
+
 ## Making it concrete | Normal Example
+We show that if $Y_{i} \sim N(\mu_{i}, \sigma^{2})$:
 
-For 
+$$\hat{D}* = \sum\left(\frac{y_{i} - \hat{\mu_{i}}}{\sigma}\right)^{2}$$
 
+Does this look familiar?
 
-##Recall from last week | A general linear model {.codefont}
+## Making it concrete | Poisson Example
+We show that if $Y_{i} \sim Pois(\lambda_{i})$:
+
+$$\hat{D}* = 2\sum y_{i}log\left(\frac{\hat{\lambda_{i}}}{y_{i}}\right) - (y_{i} - \hat{\lambda_{i}})$$
+
+See unscaled deviance on p115 of MAB624 notes for other exponential family forms. 
+
+## Hypothesis Testing | Using the Scaled Residual Deviance
+* $\hat{D*}$ is assymptotically distributed $\chi^{2}$
+* We can use this to test a variety of hypotheses.
+    + We're approximating! There is no p-value cutoff where the model is suddenly validated. A hypothesis test merely provides evidence of fit quality.
+
+##A basic general linear model {.codefont}
 ```{r, echo=FALSE}
-normal_glm_fit <- glm(data = mtcars,
-   formula = mpg ~ cyl + wt + am,
-   family = gaussian(link="identity") )
+poisson_glm_fit <- glm(data = DoctorVisits,
+   formula = visits ~ age + income + gender,
+   family = poisson(link="log") )
 
-
-#We also tried     
-
-# Observations
-# Dispersion = rse from lm ^2
-# Null deviance = total sum of squares
-# Residual deviance = sum of squared residuals
+summary(poisson_glm_fit)
 ```
+## What we can ask
+* Is there evidence the deviance of our model from the saturated model is significant? (Testing for good fit)
+    + Test stat: $\hat{D*}$
+* Is there evidence the deviance of our model from the null model is significant? (Testing for lack of fit)
+    + Test stat: $\hat{D*}_{n} - \hat{D*}_{m}$
+* Is there evidence that the devicance of our model is different to another nested model? (Testing for usefulness of covariate)
+    + Test stat: $\hat{D*}_{m0} - \hat{D*}_{m1}$, where $p_{1} > p_{0}$
+
+## Testing for goodness of fit
+$H_{0}:$ The model does not have significantly more deviance than the saturated model.
+
+$H_{1}:$ The model has significantly more deviance than the saturated model.
+
+$$T = \hat{D*}$$
+$$T \sim \chi^{2}(N - p)$$
+
+* If we accept $H_{1}$, then there is evidence our model does not explain variation in the $y_{i}$'s as well as a saturated model. 
+    + In practice this will almost always be the case. Increasing p not necessarily the answer.
+
+## Testing for goodness of fit | Example {.codefont}
+```{r}
+pchisq(q = poisson_glm_fit$deviance, 
+       df = nrow(DoctorVisits) - length(poisson_glm_fit$coefficients),
+       #Num observations - #Num parmeters (including intercept!)
+       lower.tail = FALSE)
+```
+
+* Do we reject $H_{0}$?
+
+## Testing for Lack of Fit
+$H_{0}:$ The model does not have significantly less deviance than the null model.
+
+$H_{1}:$ The model has significantly less deviance than the null model.
+
+$$T = $\hat{D*}_{n} - \hat{D*}_{m}$$
+$$T \sim \chi^{2}( (N - 1)-(N-p_{m})) = \chi^{2}(p_{m}-1)$$
+
+* If we can accept $H_{1}$, our model is better than a plain mean model. We found some signal in the noise and avoid total failure.
+
+## Testing for lack of fit | Example {.codefont}
+```{r}
+pchisq(q = poisson_glm_fit$null.deviance - poisson_glm_fit$deviance, 
+       df = length(poisson_glm_fit$coefficients) - 1,
+       #Difference in number of parameters. The null model has 1.
+       lower.tail = FALSE)
+```
+
+* Do we reject $H_{0}$?
+
+## Testing a Covariate
+
+## Signicance Stars
+
