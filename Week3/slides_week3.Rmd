@@ -135,7 +135,7 @@ head(DoctorVisits)
 help("DoctorVisits")
 
 poisson_glm_fit_health <- glm(data = DoctorVisits,
-   formula = visits ~ age + income + gender + health,
+   formula = visits ~ age + income + gender + illness,
    family = poisson(link="log") )
 
 summary(poisson_glm_fit_health)
@@ -149,10 +149,10 @@ poisson_glm_fit_age_health <- glm(data = DoctorVisits,
    formula = visits ~ age + health + income + gender,
    family = poisson(link="log") )
 
-anova_fit2 <- anova(poisson_glm_fit_age_health, )
+anova_fit2 <- anova(poisson_glm_fit_age_health )
 anova_fit2
 
-pchisq(8.981, 1, lower.tail = FALSE)
+pchisq(354.29, 1, lower.tail = FALSE)
 
 #Check this!
 anova(poisson_glm_fit, poisson_glm_fit_age_health, test="Chisq")
@@ -200,7 +200,7 @@ summary(poisson_glm_fit_all_step)
 
 ```
 
-# GLM Resiudals
+# GLM Residuals
 
 ## Types of Residuals
 * It is desirable to have a residual which represents each observation's contribution to the overall deviance, so we can judge where poor fit quality occurrs. 
