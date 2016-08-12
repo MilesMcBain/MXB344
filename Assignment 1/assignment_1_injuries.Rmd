@@ -7,11 +7,11 @@ output: html_document
 library(readr)
 library(dplyr)
 
-injury <- read_csv("~/Documents/mxb344/MAB624_Sem 2 2015_THOMPSON/assessment/assignment_4/injuries.csv")
+injury <- read_csv("~/repos/MXB344/Assignment 1/injuries.csv")
 injury <- 
   injury %>% mutate(Days = Hours/8)
 
-naive_fit <- glm(Injuries ~ Experience + Safety + offset(log(Days)),
+naive_fit <- glm(Injuries ~ Experience + Safety + offset(log(Hours)),
                  family = poisson(link="log"),
                  data=injury)
 summary(naive_fit)
@@ -55,10 +55,13 @@ r_no_std <- exp(-5.71159 + .20985)
 
 ### Dispersion
 ```{r}
-disp_fit <- glm(Deaths ~ Age + Smoke + offset(log(Pop)),
-                family = quasipoisson(link="log"),
-                data=smoker)
+disp_fit <- glm(Injuries ~ Experience + Safety + offset(log(Hours)),
+                 family = quasipoisson(link="log"),
+                 data=injury)
 summary(disp_fit)
+```
+```{r}
+  injury %>% mutate(time = Hours/(8*5*52)) %>% summarise(sum_time = sum(time))
 ```
 
 

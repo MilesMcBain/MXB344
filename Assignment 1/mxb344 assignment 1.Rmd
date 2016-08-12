@@ -1,0 +1,83 @@
+---
+title: "MXB344 Assignment 1"
+author: "Miles McBain"
+date: "12 August 2016"
+output: html_document
+---
+#Introduction
+This document describes the context of your first MXB344 assignment. The assessment marking criteria are in Task Criteria document alongside this one in the blackboard folder.
+
+#Scenario
+You are an analyst working for a global industrial manufacturing company. Your company employs over 10000 workers across a number of large factories internationally. Your production network spans Asian, European and South-American countries each with their own unique industrial relations regulations. A recent unfortunate accident in South America has put your company's safety record under the microscope. Journalists have been sending your CEO difficult questions about your company's workplace safety practices, which have been identified as highly variable across your network.
+
+Your CEO has requested you drop everything and perform some analysis on workplace injury data to help inform your company's response to this growing crisis. She would like to know:
+
+1) Of the various safety regimes in place across your company, which one would you recommend become the international standard for your company, based solely on injury prevention performance?
+
+2) It has been suggested by senior management that industry experience is more important than the safety regime when it comes to preventing injuries. His idea is that a policy directed at lowering employee churn could reduce injury rates. Does available data support this assertion?
+
+
+##The Data
+You have obtained a CSV file called `injury.csv` (in Blackboard folder with this document). It contains counts of injuries and hours worked aggregated by the experience level of the workers and the workplace safety regime in place at their factory. The data are for the last 12 months.
+
+Specifically the variables are:
+ 
+* `Inujuries` - count of injuries in group
+* `Safety` - the safety regime in place for group
+* `Hours` - total hours clocked by this group
+* `Experience` - the experience level of group
+
+#Tasks
+
+##Task 1 Statistical analysis (70 marks total)
+Conduct a regression analysis using a generalised linear model for the injury counts. Motivate this analysis using your CEO's queries. Draw conclusions that clearly address the queries. Document and develop your analysis in a single rmarkdown document. The audience of this document is another analyst (possibly yourself in 6months time), and its objective is to clearly outline the question being addressed, the methods applied, and the conclusions drawn.
+
+Base your conclusions on a fitted generalised linear model. Validate the assumptions of the model, including a fixed or free dispersion parameter based on the mean-variance relationship of your observations. Assess the fit of the model using at least one formal hypothesis test.
+
+**Hint:** Use the outline of prac 2 as a template. You can improve on this if you wish.
+
+### Task 1, Subtask 1 (10 marks of 70)
+The use of an exponential family likelihood with a free dispersion parameter for count data is known to be controversial among your colleagues who have only very basic statistical training. As an appendix to your report include the probability distribution function of the `Quasi-possion` distribution and refer to this appendix when considering the dispersion issue. Show how this distribution function can be derived by transformation of the Poisson pdf to the exponential family form, introducing the dispersion parameter and transforming to a Quasi-Poisson form. 
+
+For example this is the Poisson pdf:
+$$f(y; \lambda) = \frac{\lambda^{y}\exp(-\lambda)}{y!}$$
+
+**Hints**: 
+
+* LaTeX expressions are easy to embed in markdown. I may have already used some expressions you want to use in lecture slides, which you have the source for.
+* You probably need at least 4 steps in the derivation to communicate clearly. The clearer the better.
+
+##Task 2 Summary on a Page (SOAP) (30 marks total)
+Produce a 1 - 2 page summary for your CEO that addresses her two queries directly. This must include at least one plot. Utilise graphics creatively to make your points clear wherever possible. Some considerations:
+
+* Nominate the methods used, but do not describe them in detail.
+* Base your assertions and recommendations on evidence from your analysis.
+* Do not present the effect of a co variate without communicating the uncertainty around that effect. State confidence intervals and show confidence bounds on plots.
+* Be concise. Dot points are appropriate.
+* This is not the work, it is the advertisement for your work in task 1. In the real world people are unlikely to look at the work if the advertisement isn't clear and engaging.
+
+I would encourage you to use RMarkdown for this document, however html and pdf are also acceptable.
+
+#Submission
+**Submission of this assessment with be on Github**. At 5pm on 26/8/2016 I will download the contents of your assignment repository for grading. 
+
+Repositories have been created for all your individual assignments (Check your email for invite). I have added you as collaborators to them, meaning just you and I can see what goes in there. You can find them on gitub at: `https://github.com/MilesMcBain/mxb344_a1_<YOUR_QUT_STUDENT_NUMBER>` 
+
+e.g. `https://github.com/MilesMcBain/mxb344_a1_n8812039` 
+
+**UNLIKE** the repositories from the practicals you will not fork these to make submissions. Since you have `collaborator` status, you can commit and push directly to the repository using your favorite github client.
+
+If you cannot find your repository it means you have not yet attended a practical and I do not know your github account. Or something went horribly wrong. please email m.mcbain@qut.edu.au ASAP so I can make arrangements with you.
+
+## Submission Format
+
+Keeping your repository neat and tidy will assist me to grade you. Create a README.md file if you need to give me some instructions. Ideally your repository will contain only:
+
+1) Your analysis in markdown form. e.g. `Injury_Analysis_2016.Rmd`
+2) The data file, `injury.csv`, which you got from Blackboard.
+3) Your SOAP e.g. `Inury_SOAP_2016.Rmd` or `Inury_SOAP_2016.pdf` etc.
+4) Your README.md file. (Optional)
+
+
+Good Luck!
+
