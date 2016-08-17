@@ -57,15 +57,19 @@ $$H=X(X^{T}WX)^{-1}X^{T}W$$
 
 Where $W$ is introduced by the fitting procedure (We'll discuss later). It retains it's properties:
 
-* We can $h_{ii}$ to standardise residuals.
-* We can $h_{ii}$ to investiagte infulential points. 
+* We can use $h_{ii}$ to standardise residuals. $R = \sum \frac{r_{i}}{\sqrt{1-h_{ii}}}$
+* We can use $h_{ii}$ to investiagte infulential points. 
     + Actually we'll use **Cook's Distance** which is a function of $h_{ii}$ 
 
 Further reading: [Cook's Distance](https://en.wikipedia.org/wiki/Cook%27s_distance), [Studentised Residuals](https://en.wikipedia.org/wiki/Studentized_residual), MAB624 Notes p132
 
 ## Putting it all Together: Poisson
-* We're going to workthrough an example of using all the diagnostics necessary to arrive at a valid Poisson GLM.
+* We're going to workthrough an example of working through a data analysis process to create fit and interpret Possion GLM
+The 'Explore' and 'Communicate' part:
 
+![](http://r4ds.had.co.nz/diagrams/data-science-explore.png)
+
+From: [R for Data Science](http://r4ds.had.co.nz/introduction-1.html), *Hadley Wickham*
 
 ## Shipping Incident Data
 ```{r, include=TRUE, eval=TRUE, echo=FALSE}
@@ -96,6 +100,8 @@ summary(sa_full)
 ```{r, echo=TRUE}
 anova(sa_full, test="Chisq")
 ```
+What hypotheses can we test here?
+
 ## Residuals {.codefont}
 ```{r, echo=1:4}
 #Test of Scaled Residual Deviance against Saturated Model
@@ -107,66 +113,140 @@ sa_full$df.residual
 $\sum$ Pearson residuals$^2$ $\ne N - P$?  
 
 ## Residual Plots | Pearson
-```{r, echo=FALSE}
+```{r, include=FALSE, echo=FALSE}
 library(ggplot2)
 library(broom)
-sa_results <- augment(sa_full)
-sa_results$.pearson.resid = residuals(sa_full, type = "pearson")
-ggplot(sa_results, aes(x=.fitted, y=.pearson.resid)) + 
+library(plotly)
+library(car)
+
+sa_results <- augment(sa_full) #broom doing some magic.
+sa_results <- 
+  sa_results %>%
+  mutate(.pearson.resid = residuals(sa_full, type = "pearson"),
+          .std.pearson.resid = .pearson.resid/sqrt(1-.hat))
+
+p <- ggplot(sa_results, aes(x=.fitted, y=.std.pearson.resid)) + 
   geom_point() + 
+  xlab("Fitted Value of Linear Predictor") +
+  ylab("Standardised Pearson Residuals") + 
   stat_smooth(se = FALSE) +
   theme_minimal()
+
+#can also try car::residualPlots(sa_full)
 ```
+```{r, echo=FALSE}
+p
+```
+
 
 ## Residual Plots | Deviance
 ```{r, echo=FALSE}
 #sa_results$.resid is the deviance residual 
 ggplot(sa_results, aes(x=.fitted, y=.std.resid)) + 
   geom_point() + 
+  xlab("Fitted Value") +
+  ylab("Standardised Deviance Residuals") + 
   stat_smooth(se = FALSE) +
   theme_minimal()
 ```
 
-## Resiudal Plots
-* The devaince and pearson plots are only subtley different.
-* 
-```{r}
-sa_results %>% mutate(std.resid_calc = .resid/(sqrt(1-.hat)) )
+## Considering Influence
+p136 MAB624 notes
+
+* Cook's Distance is the influence measure of choice
+
+$$\frac{(r^{P}_{i})^2}{(1-h_{ii})^2\phi} \frac{h_{ii}}{tr(H)}$$
+
+* $CD \ge 2$ is considered noteworthy.
+
+## Cook's Distance plot
+```{r, echo=FALSE}
+#You can also use: plot(sa_full, which=4)
+ggplot(data=sa_results) + 
+  geom_segment(aes(xend = 1:nrow(sa_results), x=1:nrow(sa_results), yend=0, y=sa_results$.cooksd)) +
+  ylab("Cook's Distance") +
+  xlab("Obs. Number") +
+  theme_minimal()
+  
 ```
 
-## Test
-```{r, echo=c(1,3)}
-sum(1:10)
-cumsum(1:10)
+
+
+## Plotting Performance
+```{r, echo=FALSE}
+
+sa_results %>% 
+  arrange(incidents) %>% 
+  ggplot() +
+  geom_point(aes(x = 1:nrow(sa_results), y=.fitted, colour="fitted")) + 
+  geom_point(aes(x=1:nrow(sa_results), y=incidents, colour="incidents")) +
+  ylab("Response") +
+  xlab("Observation number by order of increasing incidents") +
+  theme_minimal()
 ```
 
-## Validation
-```{r}
-sa_main_effects <- glm(data = sa,
-                formula = incidents ~ type + construction + 
-                 operation + type:construction, 
-                family = poisson(link="log"),
-                offset = log(service)
-                )
+## Information
+* Model is better than null model $\checkmark$
+* Model is worse than saturated model $-$
+* Model does not contain redudundant parameters $\checkmark$
+* Sum of Pearson residuals $\ne N-p$ $\times$ 
+    + Dispersion issue?
+* Residuals are not well behaved $\times$
+* There are no observations exerting undue leverage $\checkmark$
+* Fitted values appear to systematically underestimate $\times$ 
+    + Underfit?
+* AIC is at a minimum $?$
 
-summary(sa_main_effects)
-
-#Peason Resiudals
-Pearson_stat <- sum(residuals(sa_main_effects, type="pearson")^2)
-pchisq(Pearson_stat, 14, lower.tail = FALSE) #N-P = 25 here!
-anova(sa_main_effects, test="Chisq")
-
-plot(sa_main_effects)
-plot(y=residuals(sa_main_effects, type = "pearson"),x=sa_main_effects$fitted.values)
-
+## Intepretation {.codefont}
+```{r, echo=FALSE}
+sa_full_summary <- tidy(sa_full)
+sa_full_summary <- 
+  sa_full_summary %>% mutate(effect.lwr_ci = exp(estimate - 2*std.error),
+                             effect=exp(estimate),
+                             effect.upr_ci = exp(estimate + 2*std.error)
+                             )
+sa_full_summary
 ```
 
-## Interpretation
+## Effect Plot
+```{r, echo=FALSE}
+p <- ggplot(sa_full_summary) +
+  geom_point(aes(x=effect, y=term)) +
+  geom_errorbarh(aes(x=effect, xmax=effect.upr_ci, xmin=effect.lwr_ci, y=term)) +
+  ggtitle("Effects Relative to Type A Ship, Constructed 1960-64, Operating 1960-74") + 
+  ylab("Term") +
+  xlab("Multplicative Effect") +
+  theme_minimal() 
+ggplotly(p)
+```
 
+## Stating Effects
+* When using the log link the exponentiated parameter estimates correspond to multiplicative effects on the rate.
+* Given the previous example we might say:
+    + *We estimate with 95% confidence that ships of type B have an incident rate between 1.2 and 2.4 times lower than ships of type A over an equal period, with all other factors held constant*.
+    + **note:** 1/.41 = 2.4, 1/.83 =1.2
+* Also common to express **Relative Rates** as percentages: 
+    + *We estimate with 95% confidence that ships constructed from 1965 to 1969 have an incident rate 49% to 171% higher than those constructed from 1960 to 1964, with all other factors held constant*.
+* Communicating the uncertainty is hard, but *very* important.
 
-##The Log-Linear model | Aside
-* Sometimes you may hear a statistician refer to Poisson GLMs as "log-linear models"
-    + Common in biology and medicine
-    + Associated with analysis of contingency tables
-    
-P344 MAB624 notes
+## Poisson Regression
+* That's the end of Poisson Regression. You now have all the tools you need to complete count data analysis with the Poisson GLM.
+* For count data that is over-dispersed for Poisson, it is common to used the Negative Binomial likelihood instead of the quasipoisson. 
+    + Google 'Negative Binomial Regression'.
+* Poisson regression is sensitive to 0s. Too many 0s or situations where 0s cannot occur create problems. In practice there are alternatives:
+    + [Zero-Inflated Poisson distribution](http://www.ats.ucla.edu/stat/r/dae/zipoisson.htm), [Zero-Truncated Poisson distribution](http://www.ats.ucla.edu/stat/r/dae/ztp.htm) 
+
+# Binomial/Binary Regression
+
+## Disambiguation: Binary Regression
+* Binary regression assumes the $Y_{i}$s follow a Bernoulli distribution. By convention every response is either 0 or 1. 
+* Overwhelmingly, you will hear this referred to as **Logistic regression**. 
+    + This comes from the logit function which is the canonical link.
+* This regression is probably the second most popular regression in use today after normal.
+* Many interesting events can be modelled as Bernoulli:
+    + Credit Risk, Survival, Win/Loss of game, Click/Don't click on add, Spam/Ham 
+
+## Example: Binary Exponential Family Derrivation
+P83 MAB624 Notes
+
+We consider $P(Y_{i} = y_{i}) = \pi_{i}^{y_{i}}(1-\pi_{i})^{1-y_{i}}$ in exponential family form.
