@@ -1,0 +1,172 @@
+---
+title: "MXB344 Week 4 Slides"
+author: "Miles McBain"
+date: "14 August 2016"
+output:   
+  ioslides_presentation:
+    css: ../style.css
+---
+
+```{r,echo=FALSE, include=FALSE}
+library(AER)
+library(dplyr)
+library(ggplot2)
+```
+
+
+#Welcome 
+
+MXB344 Lecture 4
+
+## Housekeeping
+* Your first assignment is now live. Check you can push to your github repository!
+
+## Recapping last week
+Last week we:
+
+* Discussed hypothesis tests available using the model deviance.
+* Learned about 2 kinds of residuals: Deviance and Pearson.
+* Introduced Poisson regression and the concept of exposure.
+
+
+
+#Poisson Regression 2: Selection, Validation, Interpretation
+
+
+##Hat matrix & Leverage
+* Recall the Hat matrix from the normal linear model case:
+
+$$H = X(X^{T}X)^{-1}X^{T}$$
+
+from:
+
+$$ \hat{B} = (X^{T}X)^{-1}X^{T}Y$$
+
+Has useful properties:
+
+* $h_{ii}$ is called **leverage**. 
+     + Ranges between 0 and 1.
+     + A measure of the observation's infleunce on the fit.
+
+* $var[\epsilon_{i}] = \sigma^{2}(1-h_{ii})$ 
+
+##Hat matrix & Leverage
+* In GLMs the Hat matrix has a slightly different form:
+
+$$H=X(X^{T}WX)^{-1}X^{T}W$$
+
+Where $W$ is introduced by the fitting procedure (We'll discuss later). It retains it's properties:
+
+* We can $h_{ii}$ to standardise residuals.
+* We can $h_{ii}$ to investiagte infulential points. 
+    + Actually we'll use **Cook's Distance** which is a function of $h_{ii}$ 
+
+Further reading: [Cook's Distance](https://en.wikipedia.org/wiki/Cook%27s_distance), [Studentised Residuals](https://en.wikipedia.org/wiki/Studentized_residual), MAB624 Notes p132
+
+## Putting it all Together: Poisson
+* We're going to workthrough an example of using all the diagnostics necessary to arrive at a valid Poisson GLM.
+
+
+## Shipping Incident Data
+```{r, include=TRUE, eval=TRUE, echo=FALSE}
+data("ShipAccidents")
+sa <- ShipAccidents %>% filter(service > 0)
+head(sa,n = 10)
+```
+
+## Shipping Incident Data {.codefont}
+```{r, include=TRUE, eval=TRUE, echo = TRUE}
+sa <- ShipAccidents %>% filter(service > 0)
+
+sa_full <- glm(data = sa,
+                formula = incidents ~ type + construction + 
+                 operation, 
+                family = poisson(link="log"),
+                offset = log(service)
+              )
+```
+
+
+##Model Summary {.codefont}
+```{r, echo=FALSE}
+summary(sa_full)
+```
+
+##Analysis of Deviance {.codefont}
+```{r, echo=TRUE}
+anova(sa_full, test="Chisq")
+```
+## Residuals {.codefont}
+```{r, echo=1:4}
+#Test of Scaled Residual Deviance against Saturated Model
+pchisq(sa_full$deviance, df = sa_full$df.residual ,lower.tail = FALSE)
+sum(residuals(sa_full, type="pearson")^2)
+sa_full$df.residual  
+
+```
+$\sum$ Pearson residuals$^2$ $\ne N - P$?  
+
+## Residual Plots | Pearson
+```{r, echo=FALSE}
+library(ggplot2)
+library(broom)
+sa_results <- augment(sa_full)
+sa_results$.pearson.resid = residuals(sa_full, type = "pearson")
+ggplot(sa_results, aes(x=.fitted, y=.pearson.resid)) + 
+  geom_point() + 
+  stat_smooth(se = FALSE) +
+  theme_minimal()
+```
+
+## Residual Plots | Deviance
+```{r, echo=FALSE}
+#sa_results$.resid is the deviance residual 
+ggplot(sa_results, aes(x=.fitted, y=.std.resid)) + 
+  geom_point() + 
+  stat_smooth(se = FALSE) +
+  theme_minimal()
+```
+
+## Resiudal Plots
+* The devaince and pearson plots are only subtley different.
+* 
+```{r}
+sa_results %>% mutate(std.resid_calc = .resid/(sqrt(1-.hat)) )
+```
+
+## Test
+```{r, echo=c(1,3)}
+sum(1:10)
+cumsum(1:10)
+```
+
+## Validation
+```{r}
+sa_main_effects <- glm(data = sa,
+                formula = incidents ~ type + construction + 
+                 operation + type:construction, 
+                family = poisson(link="log"),
+                offset = log(service)
+                )
+
+summary(sa_main_effects)
+
+#Peason Resiudals
+Pearson_stat <- sum(residuals(sa_main_effects, type="pearson")^2)
+pchisq(Pearson_stat, 14, lower.tail = FALSE) #N-P = 25 here!
+anova(sa_main_effects, test="Chisq")
+
+plot(sa_main_effects)
+plot(y=residuals(sa_main_effects, type = "pearson"),x=sa_main_effects$fitted.values)
+
+```
+
+## Interpretation
+
+
+##The Log-Linear model | Aside
+* Sometimes you may hear a statistician refer to Poisson GLMs as "log-linear models"
+    + Common in biology and medicine
+    + Associated with analysis of contingency tables
+    
+P344 MAB624 notes

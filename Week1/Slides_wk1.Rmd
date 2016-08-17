@@ -111,7 +111,7 @@ summary( glm(data = mtcars,
 
 ## Building Blocks of Generalised Linear Models
 * link function - monotonic and differentiable 
-* a linear predictor: $$ \eta = X^{T}\matrix{\beta}$$
+* a linear predictor: $$ \eta = X^{T}\beta$$
 * A distribution from the exponential family for the $Yi$s
 
 ## Second Last Slide | Exponential Family

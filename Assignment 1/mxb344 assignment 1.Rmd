@@ -1,5 +1,5 @@
 ---
-title: "MXB344 Assignment 1"
+title: "MXB344 Assignment 1 Task Description"
 author: "Miles McBain"
 date: "12 August 2016"
 output: html_document
