@@ -88,6 +88,9 @@ sa_full <- glm(data = sa,
                 family = poisson(link="log"),
                 offset = log(service)
               )
+
+anova(sa_full, test="Chisq")
+summary(sa_full)
 ```
 
 
@@ -178,7 +181,7 @@ ggplot(data=sa_results) +
 sa_results %>% 
   arrange(incidents) %>% 
   ggplot() +
-  geom_point(aes(x = 1:nrow(sa_results), y=.fitted, colour="fitted")) + 
+  geom_point(aes(x = 1:nrow(sa_results), y=exp(.fitted), colour="fitted")) + #Originally, I forgot to exp() here to un-log() the .fitted value! 
   geom_point(aes(x=1:nrow(sa_results), y=incidents, colour="incidents")) +
   ylab("Response") +
   xlab("Observation number by order of increasing incidents") +
