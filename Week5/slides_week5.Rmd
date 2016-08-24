@@ -1,0 +1,221 @@
+---
+title: "MXB344 Week 5 Slides"
+author: "Miles McBain"
+date: "23 August 2016"
+output:   
+  ioslides_presentation:
+    css: ../style.css
+---
+
+```{r,echo=FALSE, include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(alr3)
+library(broom)
+```
+
+#Welcome
+MXB344 Lecture 5
+
+##House Keeping
+* Assignment 1 is due 5pm tomorrow. I will be downloading the contents of your github repository then.
+* There will be time to discuss last minute queries in today's prac.
+    + Also discuss some of the finer points of RMarkdown that may help with presentation.
+* The lecture next week will be given over to Dr. Burton Wu from Bank of Queensland who will introduce the context for your second assignment.
+    + Definitely and attend and ask thoughtful questions.
+* Today I will continue to introduce "Logistic Regression".
+
+## Disambiguation: Binary Regression | Last Week 
+* Binary regression assumes the $Y_{i}$s follow a Bernoulli distribution. By convention every response is either 0 or 1. 
+* Overwhelmingly, you will hear this referred to as **Logistic regression**. 
+    + This comes from the logit function which is the canonical link.
+* This regression is probably the second most popular regression in use today after normal.
+* Many interesting events can be modelled as Bernoulli:
+    + Credit Risk, Survival, Win/Loss of game, Click/Don't click on add, Spam/Ham
+    
+## Disambiguation: Binomial Regression
+* Assumes the $Y_{i}$s follow a Binomial distribution. There are two types of responses which are analogous to the Poisson situation:
+    (@) $y_{i}$ from $n$ trials, where $n$ is held constant accross each observation (same number of trials).
+    (@) $y_{i}$ from $n_{i}$ trials, where $n$ varies per observation. This can be rexpressed as modelling $\pi_{i} = \frac{y_{i}}{n_{i}}$
+* Of these 2 is the most useful.
+* Example: Modelling passenger survivorship on the Titanic, proportion exhibiting effect from drug trial group.
+
+## Refresher: Generalised Linear Modelling
+How would we model this?
+```{r, echo=FALSE}
+dat <- data_frame( y = c(1, 0, 0, 1), x1 = c(0, 1, 0, 1), x2 = c(7.5, 2.3, 1.2, 4.1))
+knitr::kable(dat)
+```
+
+## Example: Binary Exponential Family Derrivation
+P83 MAB624 Notes
+
+We consider $Pr(Y_{i} = y_{i}) = \pi_{i}^{y_{i}}(1-\pi_{i})^{1-y_{i}}$ in exponential family form.
+
+## Example: Binomial Exponential Family Derrivation
+The fixed $n$ cased follows very similar derivation to the binary. We consider the variable $n$ case.
+
+Using the proprtion $P_{i} = \frac{Y_{i}}{n_{i}}$ we show the exponential family form of the variable $n$ case: 
+
+$$Pr(P = p) = \frac{1}{n}{n\choose np}\pi^{np}(1-\pi)^{1-y}$$
+
+p85 MAB624 notes
+
+## Intepretation of the Logit
+
+How do we interpret? 
+
+$$log\left(\frac{\pi_{i}}{1-\pi_{i}}\right) = \eta_{i}$$ 
+
+* A common name for $\frac{\pi}{1-\pi}$ is the **odds ratio** or just plain **odds** . 
+* The ratio of the probability of an event happening vs not happening. 
+    + E.g. A horse may be predicted to win a race with 2:1 odds, what does this mean?
+* The logit is just the log of this ratio. Called the **log odds**.
+* Since $\frac{\pi}{1-\pi} = \exp(\eta_{i})$ we can interpet our $\beta$ effects as mutlpliers on the odds ratio when using this link. 
+
+## Other Link functions: The Probit
+
+$$\Phi^{-1}(\pi_{i}) = \eta_{i}$$
+
+* In stats notation $\Phi$ is the CDF of the Normal distribution.
+* This link is usually used when the response is a proportion.
+* It allows quick computation of a quantity of interest, the **LD50** in dose-repsonse models. $g(\pi) = \beta_{0} + \beta_{1}x$
+* Can make interpreations of $\beta$'s with regards to increases or decreases in the LD50 [Example].
+
+## The Complementary-log-log
+
+$$log(-log(1-\pi_{i})) = \eta_{i} $$
+
+* Often abbreviated to **Cloglog**
+* Also associated with dose-response models and proportial responses.
+* Has an interpretation in terms of the hazard ratio from survival analysis [Example].
+* Rarely used!
+
+## Choosing Link functions
+
+* Choice of these 3 link functions does not usually have a great effect on result. 
+    + Logit and Probit tend to give very similar results.
+    + Cloglog is assymetrical in its tails.
+* The choice (between these 3 at least) is usually justified based on what kind of interpretation is desireable.
+* More info: [Difference between Probit and Logit Models](http://stats.stackexchange.com/questions/20523/difference-between-logit-and-probit-models)
+
+# Fitting Binary/Binomial Regression
+
+##Example: Challenger Data {.codefont}
+```{r, echo = FALSE, include=FALSE}
+data("challeng")
+challenger = as_data_frame(challeng) %>% mutate(Temp = round((Temp - 32)*(5/9)) ) #convert to celsius 
+```
+
+```{r, echo=FALSE}
+head(challenger, n=30) %>% knitr::kable()
+```
+
+## Exploratory analysis
+
+```{r, echo=FALSE}
+ggplot(challenger, aes(x=jitter(Temp),y=Fail/n)) +
+  xlab("Temperature (C)") +
+  ylab("Proportion of O-Rings Failed (n = 6)") + 
+  ggtitle("Challenger Booster Test Flights")+
+  geom_point()
+```
+
+## Fitting Proportional Model {.codefont}
+
+```{r, echo=FALSE}
+prop_model <- glm(data = challenger,
+                  formula = cbind(Fail, n-Fail) ~ Temp, #Failed, Didn't Fail ~ Temp. Should sum to 6.
+                  family = binomial("logit"))
+summary(prop_model)
+```
+
+## Analysis of Deviance {.codefont}
+```{r}
+anova(prop_model, test="Chisq")
+```
+
+## Residuals and Dispersion
+```{r}
+sum(residuals(prop_model, type="pearson")^2) 
+```
+
+Dispersion still assumed to be 1 in binomial models, but it is less common to check it.
+
+## Residual Plots | Pearson
+```{r, include=TRUE, echo=FALSE}
+
+prop_results <- augment(prop_model) 
+prop_results <- 
+  prop_results %>% select(-cbind.Fail..n...Fail.) %>%
+  mutate(.pearson.resid = residuals(prop_model, type = "pearson"),
+          .std.pearson.resid = .pearson.resid/sqrt(1-.hat))
+
+p <- ggplot(prop_results, aes(x=.fitted, y=.std.pearson.resid)) + 
+  geom_point() + 
+  xlab("Fitted Value of Linear Predictor") +
+  ylab("Standardised Pearson Residuals") + 
+  stat_smooth(se = FALSE) +
+  theme_minimal()
+
+p
+```
+
+## Resiudal Plots
+* Residual plots are seldom used for logistic regression. 
+    + In the binary case they are very hard to intepret.
+* This is alo related to the historical use of logistic models as predictive models. In industry they tend to be assessed on their predictive accuracy.
+
+## Cook's Distance plot
+```{r, echo=FALSE}
+#You can also use: plot(sa_full, which=4)
+ggplot(data=prop_results) + 
+  geom_segment(aes(xend = 1:nrow(prop_results), x=1:nrow(prop_results), yend=0, y=prop_results$.cooksd)) +
+  ylab("Cook's Distance") +
+  xlab("Obs. Number") + 
+  theme_minimal()
+```
+
+## Performance
+```{r, echo=FALSE}
+prop_predictions <- predict(prop_model,newdata = data_frame(Temp = 0:40), se.fit = TRUE, type="response") %>% 
+  as_data_frame() %>%
+  group_by(row_number()) %>% #A trick to get the mutate to apply rowise by pair
+  mutate(upr = min(fit+2*se.fit,1),
+         lwr = max(fit-2*se.fit,0))
+ggplot(prop_predictions, aes(x=0:40,y=fit)) + 
+  xlab("Temperature (C)") +
+  ylab("Predicted Proportion of Failed O-Rings n=6") + 
+  geom_ribbon(aes(ymin=lwr, ymax=upr), fill = "grey70") +
+  geom_line()+
+  geom_point(data = challenger, aes(x=Temp,y=Fail/n)) + 
+  geom_vline(xintercept = 2.2, linetype = "longdash") +
+  annotate("text", x =  9.0, y = 0.9, label = "Challenger Launch Temp") +
+  theme_minimal()
+
+
+
+```
+
+## Intepretation: Multiplicative effect {.codefont}
+```{r, echo=FALSE}
+prop_summary <- tidy(prop_model)
+prop_summary 
+```
+Using $\frac{\hat{\pi}}{1-\hat{\pi}} = \exp(\hat{\eta_{i}})$:
+
+```{r}
+1/exp(-0.2067+c(-2*0.0865, 2*0.0865))
+```
+We can claim: According to our model, we are 95% confident that for each degree decrease in air temperature the odds of booster rocket o-ring failure increase by 1.03 to 1.46 times. 
+
+## Intepretation: Proportion estimate {.codefont}
+```{r, echo=FALSE}
+prop_summary 
+```
+```{r}
+eta = 1.3466 + (2.22 * -0.2067)
+p = exp(eta) / (1+exp(eta))
+p
+```
+Furthermore, we note that given the launch day temperature of 2.2 dergess, our model predicts a 70% rocket booster O-ring failure rate with no sensible estimates of uncertainty available due to the temperature being well outside the range of the test data.
