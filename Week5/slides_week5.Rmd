@@ -57,7 +57,7 @@ The fixed $n$ cased follows very similar derivation to the binary. We consider t
 
 Using the proprtion $P_{i} = \frac{Y_{i}}{n_{i}}$ we show the exponential family form of the variable $n$ case: 
 
-$$Pr(P = p) = \frac{1}{n}{n\choose np}\pi^{np}(1-\pi)^{1-y}$$
+$$Pr(P = p) = \frac{1}{n}{n\choose np}\pi^{np}(1-\pi)^{1-np}$$
 
 p85 MAB624 notes
 
@@ -161,10 +161,10 @@ p <- ggplot(prop_results, aes(x=.fitted, y=.std.pearson.resid)) +
 p
 ```
 
-## Resiudal Plots
+## Aside: Resiudal Plots
 * Residual plots are seldom used for logistic regression. 
     + In the binary case they are very hard to intepret.
-* This is alo related to the historical use of logistic models as predictive models. In industry they tend to be assessed on their predictive accuracy.
+* This is also related to the historical use of logistic models as predictive models. In industry they tend to be assessed on their predictive accuracy using hold-out data.
 
 ## Cook's Distance plot
 ```{r, echo=FALSE}
