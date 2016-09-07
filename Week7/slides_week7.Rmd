@@ -12,6 +12,9 @@ library(dplyr)
 library(ggplot2)
 library(readr)
 library(broom)
+library(tidyr)
+library(nycflights13)
+library(lubridate)
 ```
 
 #Welcome
@@ -22,6 +25,7 @@ MXB344 Lecture 7
 * Today I want to revise some concepts commonly used incorrectly on your assignment.
 * 2nd half of the lecture will be on Data Wrangling for Predictive Modelling.
 * We'll finalise your assignment groups and discuss the assignment in detail in the prac.
+    -We'll also return to the Titanic example.
 
 # But first a plot.
 
@@ -79,13 +83,183 @@ glm_frame <-tidy(glm_fit, conf.int = TRUE, exponentiate = TRUE)
 glm_frame %>% select(term,estimate, conf.low,conf.high)
 ```
 * We're 95% confident that experience mutilplies injury rate by between 0.70 and 0.73 **per unit increase in experience**
-* How would the injury rate decrease if we had zero churn for 3 units?
+* How would the injury rate decrease if we had zero churn for 3 years/months?
 
 # Data Wrangling for Predictive Modelling
 
-## Start With the End in Mind
+## Data Wrangling, Data Munging, Data Prep 
+* As you heard from BOQ, the bulk of the work in real-world data analysis is data preparation (80%!).
+* What is the goal of data preparation?
+* What are the challenges?
+* What tools can we use to resolve them?
 
-Tidyverse
 
-##
+## Start with the end in mind
+* Our target is [Tidy Data](http://vita.had.co.nz/papers/tidy-data.pdf)
+* Tidy Data is simple to describe but can be subtle to recognise
+* It has three simple rules:
+(@) Each variable must have its own column.
+(@) Each observation must have its own row.
+(@) Each value must have its own cell.
+
+## Case study: Particle Simulation Study {.codefont}
+* Background: Power simulation for particle size test
+    - Power is probability that test will reject a false null hypothesis
+* Is this tidy data?
+```{r, echo=FALSE}
+power_sim <- read_rds("power_sim")
+knitr::kable(power_sim)
+```
+
+## Enter the Tidyverse
+* [This is the tidyverse](https://github.com/hadley/tidyverse).
+* `dplyr`, `ggplot2`, `broom`, `tidyr` etc are all geared toward tidy data.
+* If something feels hard it's likely because your data isn't in the tidy form.
+
+## Using ggplot2 with the power sim data
+```{r, eval=FALSE}
+
+power_sim %>%
+  ggplot(aes(x = n)) +
+  geom_line(aes(y= `mean-2me;sd-5`, colour=factor(1)))+
+  geom_line(aes(y= `mean-2me;sd+5`, colour=factor(2)))+
+  geom_line(aes(y= `mean+2me;sd-5`, colour=factor(3)))+
+  geom_line(aes(y= `mean+2me;sd+5`, colour=factor(4)))
+```
+* Still work to do to fix the legend...
+
+## Introducing gather and spread
+* `tidyr::gather()` and `tidyr::spread()` can help you rearrange your data into tidy form.
+* `gather` takes a dataset and makes it narrow. Column headers turn into row values.
+* `spread` makes a dataset wide. Row values turn into column headers.
+    - Learning to use these functions effectively will make you look like a data wizard.
+
+##Gathering the power sim data
+```{r, eval=FALSE}
+power_sim_gather <-
+  power_sim %>%
+  gather(key=?, value=?, ...)
+```
+
+##Using ggplot2 on the tidy power sim data
+```{r, echo=FALSE}
+power_sim_gather <-
+  power_sim %>%
+  gather(key=distribution, value=power, `mean-2me;sd-5`:`mean+2me;sd+5`)
+```
+
+```{r, eval=FALSE}
+power_sim_gather %>%
+  ggplot(aes(x=n, y=power, colour=distribution)) +
+  geom_line()
+```
+
+## Combining Data
+* Sometimes you have multiple datasets you need to join together to create your tidy data set for analysis. (like your assignment!)
+* Common scenarios where this arises:
+    - Your data was extracted from a relational database (SQL): multiple tables
+    - You need to append public data to your dataset. E.g weather, financial indicies.
+    - Your data is published periodically. E.g. ABS stats, Financial reports etc.
+
+## Introducing Joins
+* `dplyr::bind_rows()`, `dplyr::bind_cols()` can work for trival cases where we have exactly the same number of rows or columns.
+* For more complex cases we will need to consider a **join**.
+* Before you can join two or more datasets you need to identify the **key** column(s).
+    - These are columns that uniquely identify each row.
+    
+## Key example {.codefont}
+What is the key?
+```{r, eval=FALSE}
+data("planes")
+planes
+data("flights")
+flights
+data("weather")
+weather
+```
+
+## Join Example: Weather to Flights {.codefont}
+Is departure delay associated with temperature?
+```{r, eval=FALSE}
+flights2 <- flights %>% 
+  select(year:day, hour, origin, dest, tailnum, carrier, dep_delay)
+
+flight_weather <-
+  flights2 %>%
+  left_join(weather, by = c("year", "month", "day", "hour", "origin"))
+
+ggplot(flight_weather, aes(x=temp,y=dep_delay)) +
+  geom_point(alpha=0.2)
+```
+
+##Types of joins
+* We'll walk though [the guide in R for Data Science](http://r4ds.had.co.nz/relational-data.html#understanding-joins).
+
+##Issues arising when joining
+* Missing values
+    - Cannot fit a regression model with missing values
+    - Options: Drop or impute and add indicator
+    - Not expected to impute for assignment.
+* Duplicate values
+    - Can fit a regression model with duplicate observations, but this violates independent data assumption. 
+    - Effect esimtates will become nonsense.
+    - Must remove!
+
+##Making Comparable Features
+* **Feaures** is a machine learning term for covariates.
+* Feature engineering the the process of creating new covariates more from data in the dataset.
+* A classic example are with date type columns. 
+
+##Case Study: Counting Customer contact
+* A company with many brands was worried they were contacting their customers too much and upsetting them. Created fearures relating to recent contact to feed into marketing models.
+```{r, eval=TRUE}
+customer <- read_csv("customer.csv")
+contact <- read_csv("contact.csv")
+customer
+contact
+```
+
+## First step: Join {.codefont}
+```{r}
+customer_contact <-
+  left_join(contact, customer, by="customerID")
+```
+
+## Second step: Mutate {.codefont}
+```{r}
+customer_contact <-
+  customer_contact %>%
+  mutate(timestamp = as.Date(dmy_hms(timestamp)), 
+         date= dmy(date),
+         date_diff = date-timestamp)
+```
+
+##Third step: Filter {.codefont}
+```{r}
+customer_contact <-
+  customer_contact %>%
+  filter(date_diff <= 30)
+```
+
+##Fourth step: Summarise {.codefont}
+```{r}
+customer_contact <-
+  customer_contact %>%
+  group_by(customerID) %>%
+  summarise(n_contact = n()) %>%
+  left_join(customer, by="customerID")
+```
+
+#Selecting Variables
+
+## Variable selection heuristics
+* By combination of feature engineering and large data you may end up with too many covariates to make sense of.
+* Several heuristics can be employed to trim the number of columns down:
+    - Identify and remove one of highly correlated column pairs. Usual cutoffs are 0.7 - agressive to 0.9 conservative.
+    - Identify important variables: Conduct single variable regression with response and take top n best AIC, deviance, or Gini.
+    
+
+
+
+
 
