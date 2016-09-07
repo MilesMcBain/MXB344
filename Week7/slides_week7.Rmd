@@ -1,0 +1,91 @@
+---
+title: "MXB344 Week 7 Slides"
+author: "Miles McBain"
+date: "7 September 2016"
+output:   
+  ioslides_presentation:
+    css: ../style.css
+---
+
+```{r,echo=FALSE, include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(broom)
+```
+
+#Welcome
+MXB344 Lecture 7
+
+## Housekeeping
+* I'm nearly finished marking your assignment. Marks should be released tomorrow. I'll release your score on blackboard but I'll push feedback comments to your github repository.
+* Today I want to revise some concepts commonly used incorrectly on your assignment.
+* 2nd half of the lecture will be on Data Wrangling for Predictive Modelling.
+* We'll finalise your assignment groups and discuss the assignment in detail in the prac.
+
+# But first a plot.
+
+## Which would you choose?
+```{r, echo=FALSE}
+injuries <- read_csv("injuries.csv")
+injuries$Experience <- 9:1
+
+ggplot(data = injuries, aes(x=Experience, y= (Injuries/Hours)*40*49, colour=Safety ) ) +
+  geom_line() +
+  geom_point() +
+  ylab("Injuries per Year Worked") +
+  ggtitle("Injury Rate vs Experience by Safety Regime") + 
+  theme_minimal()
+
+```
+
+## For Your Next Assignment | Models vs Visualisation
+
+> **Visualisation** is a fundamentally human activity. A good visualisation will show you things that you did not expect, or raise new questions of the data. A good visualisation might also hint that you’re asking the wrong question and you need to refine your thinking. In short, visualisations can surprise you. However, visualisations don’t scale particularly well.
+> 
+> **Models** are the complementary tools to visualisation. Models are a fundamentally mathematical or computation tool, so they generally scale well. Even when they don’t, it’s usually cheaper to buy more computers than it is to buy more brains. But every model makes assumptions, and by its very nature a model can not question its own assumptions. That means a model can not fundamentally surprise you.
+
+-Hadley Wickham, *R for Data Science*
+
+## Exploratory Analysis
+* Don't under-value time spent on exploratory analysis. Your exploratory analysis will be your touch stone, and your sanity check.
+* If the model you come up with does not agree with your exploratory visualisation this is a **BIG** red flag.
+    - Do not move forward with the model until you have investigated.
+
+## Significance {.codefont}
+```{r, echo=FALSE}
+#injuries$Safety <- injuries$Safety %>% forcats::fct_relevel("On-Site Induction")
+
+glm_fit <- glm(data = injuries,
+               formula = Injuries ~ Safety + Experience,
+               offset = log(Hours),
+               family=poisson(link="log"))
+summary(glm_fit)
+
+#injuries$Safety <- injuries$Safety %>% forcats::fct_relevel("Certification")
+```
+
+## Significance
+* If we changed the baseline safety category to On-Site Induction, everything would be significant according to the p-value.
+* The p-value does not allow us to say something is "Significant in the model".
+    - A covariate may have significant effect relative to the baseline.
+    - p-values are not comparable between covariates. The p-value is a highly unstable measure.
+* Significant amount of deviance explained is the only way to judge if a covariate should be in the model.
+    - We can comapre freely between covariates this way as well.
+
+## Continuous Predictors {.codefont}
+```{r}
+glm_frame <-tidy(glm_fit, conf.int = TRUE, exponentiate = TRUE)
+glm_frame %>% select(term,estimate, conf.low,conf.high)
+```
+* We're 95% confident that experience mutilplies injury rate by between 0.70 and 0.73 **per unit increase in experience**
+* How would the injury rate decrease if we had zero churn for 3 units?
+
+# Data Wrangling for Predictive Modelling
+
+## Start With the End in Mind
+
+Tidyverse
+
+##
+

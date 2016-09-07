@@ -11,6 +11,11 @@ injury <- read_csv("~/repos/MXB344/Assignment 1/injuries.csv")
 injury <- 
   injury %>% mutate(Days = Hours/8)
 
+injury <-
+  injury %>%
+  mutate(Experience = gsub('[“”]', "", x = Experience)) %>%
+  mutate(Experience = as.integer(substr(Experience,1,1)))
+
 naive_fit <- glm(Injuries ~ Experience + Safety + offset(log(Hours)),
                  family = poisson(link="log"),
                  data=injury)

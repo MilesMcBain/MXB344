@@ -1,7 +1,7 @@
 ---
 title: "R Notebook"
 output:
-  html_notebook: default
+  html_document: default
   pdf_document: default
 ---
 
@@ -96,7 +96,9 @@ missing <-
          value="missing",
          gather=id:repay_fail) %>%
   arrange(desc(missing))
-#
+missing
+
+
 ```
 
 In handling NAs we can either:
@@ -114,7 +116,7 @@ next_payment_d - although you could transform this to something like 'delinq_las
 ```{r}
 #Removing Very high
 project_data <-
-  project_data %>% select(-mths_since_last_major_derog, -mths_since_last_record, -next_pymnt_d)
+  project_data %>% select( -next_pymnt_d)
 
 #could coalesce mths_since_last_delinq into delinq in last 6 months or such. But we have the Delinq last 2 years varibale which is probably sufficient.
 #Last payment date is probably not important since we already have a variable for if the loan is late, 16-30, 31-120 etc.
@@ -127,13 +129,20 @@ project_data <-
 #Revolving line utilization rate, or the amount of credit the borrower is using relative to all available revolving credit.
 #Wiki definition suggests this is like credit card debt.
 #This could be an important variable.
-project_data %>% filter(is.na(revol_util)) %>% View()
+#project_data %>% filter(is.na(revol_util)) %>% View()
 #It's a low number of NAs, only 54. So it makes sense just to remove.
 project_data <-
   project_data %>% filter(!is.na(revol_util))
 
 project_data %>% nrow()
 ```
+#NA Check
+```{r}
+ggmissing::gg_missing_var(project_data)
+```
+
+
+
 #Date Variables
 ```{r}
 #It's not great to have dates. Really we want to convert them to some number of months since event.
@@ -145,8 +154,7 @@ project_data <-
                                               parse_date_time(paste0('1',earliest_cr_line), orders="d!bY!"),
                                               units = 'weeks'
                                             )/52
-                        ) %>%
-  select(-issue_d, -earliest_cr_line)
+                        ) 
 
 ```
 #Leaking Variables
@@ -157,13 +165,12 @@ project_data <-
 #2. the model perfectly separates repay_fail?
 ## recoveries > 0 separates repay fail perfectly.
 project_data <-
-  project_data %>% select(-recoveries, -grade, -loan_status, -sub_grade, -installment)
+  project_data %>% select(-recoveries, -grade, -loan_status, -sub_grade, -installment, -issue_d, -earliest_cr_line)
 ```
 
 
 #Correlated Variables
 ```{r}
-
 #In order to find correlation we would need to convert all variables to numeric/indicators
 varcoding <- dummyVars(repay_fail ~ . ,data = project_data,fullRank = T)
 train_data <- predict(varcoding, newdata = project_data)
@@ -189,6 +196,8 @@ project_data <- project_data[, !(names(project_data) %in% corellated_names) ]
 ```
 
 
+
+
 #Fit GLM
 ##Create data splits for cross-validation
 ```{r}
@@ -198,10 +207,48 @@ test_val_data <- project_data[-train_idx[[1]],]
 test_idx <- createDataPartition(test_val_data$repay_fail, p=0.5)
 project_data_test <- test_val_data[test_idx[[1]],]
 project_data_val <- test_val_data[-test_idx[[1]],]
-
-
 ```
+##Create Dummy Model for benchmarking
+```{r}
+#create dataset for modelling
 
+simple_model <- glm(data=project_data_train,
+                    formula = repay_fail ~ emp_length + home_ownership + annual_inc,
+                    family = binomial())
+
+summary(simple_model)
+
+model_preds_train = 1 / (1+ (1/exp(predict(simple_model)) ) )
+model_preds_train[model_preds_train > 0.5] <- 1
+model_preds_train[model_preds_train <= 0.5] <- 0
+
+caret::confusionMatrix(data = model_preds_train, reference = project_data_train$repay_fail)
+
+model_preds_val = 1 / (1+ (1/exp(predict(simple_model, newdata = project_data_val)) ) )
+model_preds_val[model_preds_val > 0.5] <- 1
+model_preds_val[model_preds_val <= 0.5] <- 0
+
+
+caret::confusionMatrix(data = model_preds_val, reference = project_data_val$repay_fail)
+stop("STOP!")
+library(ROCR)
+model_preds_train = 1 / (1+ (1/exp(predict(simple_model)) ) )
+model_preds_val = 1 / (1+ (1/exp(predict(simple_model, newdata = project_data_val)) ) )
+val_pred_ob <- prediction(predictions = model_preds_val, labels = project_data_val$repay_fail)
+train_pred_ob <- prediction(predictions = model_preds_train, labels = project_data_train$repay_fail)
+perf <- performance(val_pred_ob, measure = "tpr", x.measure = "fpr")
+perf_train <- performance(train_pred_ob,measure = "tpr", x.measure = "fpr")
+
+plot(perf,main="Validation set ROC, Gini=0.110, Accuracy=85%")
+plot(perf_train,main="Train set ROC, Gini=0.114, Accuracy=85%")    
+
+gini_train = performance(train_pred_ob, measure = "auc")
+gini_val = performance(val_pred_ob, measure = "auc")
+
+
+(gini_train@y.values[[1]] -.5)*2
+(gini_val@y.values[[1]] -.5)*2
+```
 
 ##Fit binomial(link=logit)
 ```{r}

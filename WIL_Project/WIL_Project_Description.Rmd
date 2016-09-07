@@ -1,0 +1,104 @@
+---
+title: "MXB344 Work Integrated Learning Project Description"
+author: "Miles McBain"
+date: "2 September 2016"
+output: html_document
+---
+#Introduction
+This document describes your MXB344  group project. The project is broken down into two separate assignments, in the main this is bureaucratically motivated, so hopefully what you will be graded on and when is clear from this document and the associated criteria sheets. If not, as always: ask.
+
+## Groups
+Your are free to choose your own groups of 3-4 students. In the practical on 8/9/2016 I will ask you for your group allocations and create group Github repositories for you.
+
+#Scenario
+You are a team of analysts working for peer-to-peer personal lending startup that has been recently acquired by a regional Australian Bank (BOQ). After much back-slapping and champagne cork popping it has come to light that the risk models used by your company previously were too ad-hoc to be suitable for use in a bank that is subject to strict regulatory requirements. Your new management has ordered your team to do a 'ground-up' rebuild of your credit risk (loan default) models using tools, methods, and performance measures they are familiar with.
+
+You have access to your historical lending data, which you will need to utilise to build your new credit risk model.
+
+With regards to your new credit risk model your management has a number of primary concerns:
+
+1) How does this model perform compared to the one you used previously? How can it be expected to perform on new loans? There are some performance benchmarks available in the project folder on Blackboard under `/Old Model Performance`.
+
+2) What are the important variables in this model and how do they compare to variables the bank has found to be traditionally important in its own modelling?
+
+3) What assurances and justifications can you make about the statistical rigor of your model and modelling methodology?
+
+##The Data
+Your IT team have provided a database export of your lending activity between 2007 and 2011. It is in the `/data` folder under this project folder on Blackboard. This is the data on which your old model was bench marked. The data are split over two database tables: `CUSTOMER_LOAN` and `CUSTOMER_LOAN_HISTORY`. There is also a data dictionary explaining the covariates in the accompanying .xlsx file.
+
+#Assignments
+
+## Boardroom report - Assignment 2 - (20% of overall MXB344 grade)
+
+### Task 1 Make a presentation of your findings to management (100 marks)
+Your analysis will not be concluded at this stage, but you will need to come to the meeting with a proposed model, and make a 40 minute presentation that address the 3 concerns outline above. The presentation needs to have slides and they need to be engaging to keep the panel focused. Expect interjections and questions. 
+
+Your panel may give feedback on your model or modelling process that you can incorporate into your final analytical report.
+
+Consult the criteria document on Blackboard for further detail.
+
+###Submision
+Your slides should be present in your github repository for reference. You do not need to submit anything else. You will be allocated a time slot on **Thursday 20/10/2016, which all group members must attend**.
+
+##Reproducible Analysis - Assignment 3 - (40% of overall MXB344 grade)
+Your team will conduct a regression analysis using a general linear model for the binary response of loan default. The objective is **to be able to predict loan deafult based on information known at the time of application**.  
+
+### Task 1 Delivery Plan (10 Marks)
+You will create a planning document that outlines the currently understood work to complete and allocates it to the remaining weeks until submission with team members. This can be as simple as a Google doc or as complicated as a Gantt chart or online Task board. 
+
+You will update this document weekly as work progresses. Each Thursday in the class practical session you will be called on to undertake a short review of your plan with you manager (lecturer).
+
+#### Submission
+Submission of this task is weekly until project completion. You will need to have the plan ready for review when called every week to receive full marks.
+
+### Task 2 Interim Analytical Report (15 marks)
+You will make an interim report on the first project milestone which is creating a data set that modelling can commence with. Document and develop your analysis in a single markdown document. 
+
+The most important part of this task is the definition of the response (loan default) and the splitting of the data into cross-validation sets. You may have to do some research into the terminology of the data set to define the response. Your benchmark was calculated on a model that considered probability of load default within 2 years, where default was defined as the event that payment was more than 30 days past due.
+
+Since this is a historical data set, care must also be taken to eliminate information from after the loan application date or information related to old credit risk models, since this will interfere with your current round of modelling.
+
+#### Submission
+This report along with the modelling data set must be present in your team github repository at **5pm Friday 23/9/2016**. You may be past data this milestone at this stage. 
+
+### Task 3 Analytical Report (50 marks)
+This is your team's final analytical report on your modelling which you will motivate using your management's concerns. For variable selection you **may** consider deviance tests and AIC, but you **must** consider the gini score based on a single variable regression as this is one of your managements preferred measures of variable importance.
+
+Draw conclusions that clearly address all 3 of your management's concerns. Document and develop your analysis in a single r markdown document. The audience of this document is another analyst (possibly yourself in 6months time), and its objective is to clearly outline the question being addressed, the methods applied, and the conclusions drawn.
+
+Base your conclusions on a final proposed binomial generalised linear model. Validate the assumptions of the model, and assess the performance of the model using industry applicable methods: i.e. cross validation.
+
+#### Submission
+This report along with the modelling data set (you may have updated it) must be present in your team github repository at **5pm Friday 4/11/2016**.
+
+### Task 4 Summary on a Page (SOAP) (15 marks)
+Produce a 1 - 2 page summary for your management that addresses their 3 concerns. This must include at least one plot. Utilise graphics creatively to make your points clear wherever possible. Some considerations:
+
+* Nominate the methods used, but do not describe them in detail.
+* Base your assertions and recommendations on evidence from your analysis.
+* Present both important variables and their effects in addition to some analysis of variables your management may have been expecting to be important (if not present in final model).
+* Do not present the effect of a co variate without communicating the uncertainty around that effect. State confidence intervals and show confidence bounds on plots.
+* Be concise. Dot points are appropriate.
+* This is not the work, it is the advertisement for your work in task 3. In the real world people are unlikely to look at the work if the advertisement isn't clear and engaging.
+
+I would encourage you to use R Markdown for this document, however html and pdf are also acceptable.
+
+#### Submission
+This report along with the modelling data set (you may have updated it) must be present in your team github repository at **5pm Friday 4/11/2016**.
+
+### Taks 5 Individual Performance Review (10 marks)
+In the final week of the project your lecturer will make a questionnaire for your individual response available on Blackboard in the assessment folder. The questionnaire will contain a short list of questions that will give you the opportunity to discuss your personal contribution your team project and argue what grade you should receive for it. An assignment submission link will be made available on Blackboard for the performance review with due date **5pm Friday 11/11/2016**. You have some time to reflect after the flurry of the final submission.
+
+**Hint:** In response to the questions, concrete examples of your contributions are the best thing you can provide. Links to github commits would be ideal. Commit early commit often and you should have plenty of material.
+
+P so I can make arrangements with you.
+
+# Overall Submission Format Guidelines
+
+As per the first assignment, the primary mode of submission will be your team's github repository. Keeping your repository neat and tidy will assist your lecturer to grade you. Create a README.md file if you need to give your lecturer instructions in order to reproduce your work. Ideally your repository will contain only one file for each of the prescribed tasks and that file will be clearly labelled. 
+
+Since you will have multiple people contributing to the same repository and code base, merge conflicts may arise (file conflicts). This assignment is a great opportunity to learn to resolve these yourself using online resources like stack exchange etc. Once you do, you'll pretty much able to conquer anything git/github can throw at you. Your lecturer can offer advice in this matter if the situation is dire. But **do not** let your team get into the situation where you are trying to resolve this at 4:30pm on the due date.
+
+
+Good Luck!
+

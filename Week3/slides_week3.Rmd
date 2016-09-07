@@ -188,12 +188,15 @@ $$AIC = -2l(\hat{\mu}; y, \phi) + 2p$$
 ## Stepwise Model selection using AIC | Example
 We use `step` to automate model selection from a parameter space based on AIC.
 ```{r, include=FALSE}
+library(AER)
+data("DoctorVisits")
+
 poisson_glm_fit_all <- glm(data = DoctorVisits,
    formula = visits ~ ., #. means everything that isn't the response
    family = poisson(link="log") )
 
 poisson_glm_fit_all_step <- step(object = poisson_glm_fit_all,
-                                 scope = visits ~ .
+                                 scope = visits ~ .^2 #means cross product
                             )
 
 summary(poisson_glm_fit_all_step)
