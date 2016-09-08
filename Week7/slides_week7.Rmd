@@ -58,7 +58,7 @@ ggplot(data = injuries, aes(x=Experience, y= (Injuries/Hours)*40*49, colour=Safe
 
 ## Significance {.codefont}
 ```{r, echo=FALSE}
-#injuries$Safety <- injuries$Safety %>% forcats::fct_relevel("On-Site Induction")
+injuries$Safety <- injuries$Safety %>% forcats::fct_relevel("On-Site Induction")
 
 glm_fit <- glm(data = injuries,
                formula = Injuries ~ Safety + Experience,
@@ -146,6 +146,8 @@ power_sim_gather <-
 power_sim_gather <-
   power_sim %>%
   gather(key=distribution, value=power, `mean-2me;sd-5`:`mean+2me;sd+5`)
+
+power_sim_gather
 ```
 
 ```{r, eval=FALSE}
@@ -171,11 +173,11 @@ power_sim_gather %>%
 What is the key?
 ```{r, eval=FALSE}
 data("planes")
-planes
+planes %>% View()
 data("flights")
-flights
+flights %>% View()
 data("weather")
-weather
+weather %>% View()
 ```
 
 ## Join Example: Weather to Flights {.codefont}
@@ -223,6 +225,7 @@ contact
 ```{r}
 customer_contact <-
   left_join(contact, customer, by="customerID")
+customer_contact %>% View()
 ```
 
 ## Second step: Mutate {.codefont}
