@@ -173,11 +173,11 @@ power_sim_gather %>%
 What is the key?
 ```{r, eval=FALSE}
 data("planes")
-planes %>% View()
+#planes %>% View()
 data("flights")
-flights %>% View()
+#flights %>% View()
 data("weather")
-weather %>% View()
+#weather %>% View()
 ```
 
 ## Join Example: Weather to Flights {.codefont}

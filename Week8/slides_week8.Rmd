@@ -1,0 +1,129 @@
+---
+title: "MXB344 Lecture 8"
+author: "Miles McBain"
+date: "11 September 2016"
+output:   
+  ioslides_presentation:
+    css: ../style.css
+---
+
+```{r, include=FALSE, echo=FALSE}
+library(dplyr)
+library(readr)
+library(corrplot)
+library(car)
+library(caret)
+library(tidyr)
+library(purrr)
+library(broom)
+library(forcats)
+library(ggplot2)
+```
+#Welcome
+MXB344 Lecture 8
+
+## House Keeping
+* Your assignment marks have been released. Please feel free to ask for clarification of any of my comments.
+* I will be calling for your your delivery plans in today's practical.
+
+## Selecting Variables
+* Last week we introduced the ideas of correlation cutoffs and single variable regression measures.
+* This week we will introduce VIF and see some examples of these 3 methods.
+* Reminder: The problem context is we have a large number of covariates we which to reduce to a more manageable set.
+    - **Multicollinearity** is a common problem associated with large numbers of covariates. Addressing this has the **side effect** of reducing the covariate set.
+    - **Variable importance** measures can help us reduce the covariate set and help us understand the model's performance. Typically we need to fit some kind of model to determine varibale importance.
+
+## Variance Inflation Factor (VIF)
+* A common diagnostic statistic for multicollinearity.
+* For normal linear models the VIF is defined:
+
+$$VIF_{i} = \frac{1}{1-R_{i}^{2}}$$
+
+* Where $R_{i}^{2}$ is the $R^{2}$ obtained from fitting a linear model to $X_{i}$, using all other covariates as the explantory variables. The response, $Y$, is ingored.
+* VIF > 5 suggests investiagation/intervention needed.
+* For GLM's $R^{2}$ is not defined.
+
+## Generalised Variance Inflation Factor (GVIF)
+* $GVIF_{i}$ is instead formulated from the ratio of determinants of correlation matrices of our full data matrix, $X$ and the data matrix without rows and columns for $i$, $X_{/i}$. 
+* $X_{/i}$ may differ by a number of columns if $X_{i}$ is categorical.
+* The determinant of the correlation matrix is a common indicator of multicollinearty. 1 = Uncorrelated columns, 0 = correlated.
+* For our purposes we don't really care.
+* We have a VIF we can use for GLMS. 
+    - The R function to use is `vif()` from the `car` package.
+
+## Example: Backpain {.codefont}
+* We consider a kaggle dataset created to model [abnormal backpain](https://www.kaggle.com/sammy123/lower-back-pain-symptoms-dataset).
+* It is characterised by 12 numeric measurements that sure exhibit some degree of correlation?
+```{r, echo=FALSE}
+library(dplyr)
+library(readr)
+spine_data <- read_csv("./spine.csv")
+spine_data  <-
+  spine_data %>% 
+  mutate(abnormal_pain = ifelse(Class_att == "Abnormal", yes=1, no=0)) %>%
+  select(-Class_att)
+
+spine_data %>% glimpse()
+```
+
+## Exploring the Corellation Matrix
+```{r, echo=FALSE, include=2}
+cor(spine_data) %>% corrplot(method = "color")
+```
+
+## Removing Correlated Covariates with Caret
+```{r}
+correlated_covs <-
+  spine_data %>%
+  select(-abnormal_pain) %>%
+  cor() %>%
+  findCorrelation(cutoff = 0.8) 
+
+spine_data  <-
+  spine_data[-correlated_covs]
+
+```
+
+## Applying GVIF
+* GVIF is calculated on fitted model objects.
+```{r, warning=FALSE}
+glm_fit_all <- glm(data = spine_data,
+                   formula = abnormal_pain ~ .,
+                   family = binomial(link="logit"))
+car::vif(glm_fit_all)
+```
+* A pitfall of using GVIF is that it can give nonsense answers when there is perfect linear dependency in the covariate data. 
+
+
+## Strategy: Select Best Individual General Linear Regressors {.codefont}
+* I wrote some code using the `purrr` package. You can achieve the same thing with loops.
+```{r, warning=FALSE}
+spine_model_fits <-
+  spine_data %>%
+    gather(key="measure", 
+           value="value", 
+           pelvic_tilt:scoliosis_slope) %>%
+    nest(abnormal_pain, value) %>% #could replace invoke_rows with a loop.
+    invoke_rows(.f = 
+                  function(measure, data){
+                      glm(data=data, 
+                        formula = abnormal_pain ~ value,
+                        family=binomial(link="logit")) %>% 
+                      glance()  
+                   }, 
+                 .d = .,
+                 .collate = "rows") %>%
+    arrange(AIC)
+  
+```
+
+## Plotting Single Regressor Summary Stats
+```{r, echo=FALSE}
+ggplot(spine_model_fits, aes(x=fct_reorder(measure, AIC, .desc=TRUE)
+                             , y=AIC)) + 
+  xlab("Measurement") + 
+  geom_bar(stat="identity") +
+  coord_flip() +
+  theme_minimal()
+```
+
