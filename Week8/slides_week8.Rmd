@@ -18,6 +18,7 @@ library(purrr)
 library(broom)
 library(forcats)
 library(ggplot2)
+library(ROCR)
 ```
 #Welcome
 MXB344 Lecture 8
@@ -31,7 +32,7 @@ MXB344 Lecture 8
 * This week we will introduce VIF and see some examples of these 3 methods.
 * Reminder: The problem context is we have a large number of covariates we which to reduce to a more manageable set.
     - **Multicollinearity** is a common problem associated with large numbers of covariates. Addressing this has the **side effect** of reducing the covariate set.
-    - **Variable importance** measures can help us reduce the covariate set and help us understand the model's performance. Typically we need to fit some kind of model to determine varibale importance.
+    - **Variable importance** measures can help us reduce the covariate set and help us understand the model's performance. Typically we need to fit some kind of model to determine variable importance.
 
 ## Variance Inflation Factor (VIF)
 * A common diagnostic statistic for multicollinearity.
@@ -39,8 +40,8 @@ MXB344 Lecture 8
 
 $$VIF_{i} = \frac{1}{1-R_{i}^{2}}$$
 
-* Where $R_{i}^{2}$ is the $R^{2}$ obtained from fitting a linear model to $X_{i}$, using all other covariates as the explantory variables. The response, $Y$, is ingored.
-* VIF > 5 suggests investiagation/intervention needed.
+* Where $R_{i}^{2}$ is the $R^{2}$ obtained from fitting a linear model to $X_{i}$, using all other covariates as the explanatory variables. The response, $Y$, is ignored.
+* VIF > 5 suggests investigation/intervention needed.
 * For GLM's $R^{2}$ is not defined.
 
 ## Generalised Variance Inflation Factor (GVIF)
@@ -55,8 +56,6 @@ $$VIF_{i} = \frac{1}{1-R_{i}^{2}}$$
 * We consider a kaggle dataset created to model [abnormal backpain](https://www.kaggle.com/sammy123/lower-back-pain-symptoms-dataset).
 * It is characterised by 12 numeric measurements that sure exhibit some degree of correlation?
 ```{r, echo=FALSE}
-library(dplyr)
-library(readr)
 spine_data <- read_csv("./spine.csv")
 spine_data  <-
   spine_data %>% 
@@ -127,3 +126,107 @@ ggplot(spine_model_fits, aes(x=fct_reorder(measure, AIC, .desc=TRUE)
   theme_minimal()
 ```
 
+# Comparing Predictive Models
+
+## Special considerations for predictive models
+* Explanatory statistical models seek to optimise the fit to **observed data**. They seek to explain phenomena and events.
+* Predictive models seek to optimise fit to **unobserved data**. The seek to predict phenomena and events.
+
+How can we optimise a model for data that is unobserved?
+
+## Hold-out data
+* We hold-out some data from the fitting process and **pretend** it is unobserved.
+* For this pretense to be useful we have to select the hold-out data appropriately. 
+* Example: Time series model to predict future needs hold-out data in future. You can't predict the past.
+* When comparing models we give the most weight to accuracy measures calculated on hold-out data.
+
+## Cross validation
+* The hold out data concept is formalised in practice called *Cross Validation* or *CV*.
+* CV schemes: 2-fold, n-fold, LOOCV
+* In R: `caret` and `boot` provide facilities for cross validation
+
+##Example: Spine Data Fit
+* Based of our importance plot, using 5-fold CV:
+```{r, warning=FALSE}
+glm_fit <- train(as.factor(abnormal_pain) ~ degree_spondylolisthesis + 
+                 pelvic_tilt + lumbar_lordosis_angle + 
+                   pelvic_radius + sacral_slope,
+                 data=spine_data, 
+                 method="glm",
+                 family=binomial(link="logit"),
+                 trControl=trainControl(method="cv", number=5)
+               )
+```
+* Need to use `as.factor()` for **classification** model.
+
+## Plot Accuracy
+```{r}
+glm_fit$resample$Accuracy %>% 
+  boxplot(main="Accuracy Distribution Over 5 folds", ylim=c(0.5,1))
+```
+* Is this model reliable?
+
+## Accuracy Measures
+* **Accuracy** For logistic regression is just the number 0's and 1's our model assigned correctly out of total observations in set.
+* **Kappa** is defined as: 
+    $$\frac{O_{A} - E_{A}}{1-E_{A}}$$
+
+Where $O_{A}$ = Observed Accuracy and $E_{A}$ = Expected Accuracy    
+    
+## Psuedo R^2
+* Although R^2 is not defined for GLMs, there have been attempts to create a summary statistic with similar interpretation.
+* You can find a list of them [here](http://www.ats.ucla.edu/stat/mult_pkg/faq/general/Psuedo_RSquareds.htm)
+* It is common for many Machine Learning flavoured packages to give an R^2 for GLMs.
+* The most choice for GLMs is McFadden's Pseudo R^2 value:
+
+$$1 - \frac{l(\hat{\theta}; y)}{l(\hat{\theta}_{null}; y)} $$
+
+**Note:** The log-likelihood of a saturated model is 0.
+
+## Example Pseudo R^2
+```{r warning=FALSE}
+glm_reduce <-
+  glm(data = spine_data, 
+      formula = abnormal_pain ~ degree_spondylolisthesis + 
+                 pelvic_tilt + lumbar_lordosis_angle + 
+                   pelvic_radius + sacral_slope, family=binomial())
+
+pscl::pR2(glm_reduce)
+```
+
+## ROC Curve
+* The *Receiver operating characteristic (ROC)* curve is widely used way to quantify and compare binary predictive models.
+* The name comes from WWII era radar operation manuals.
+    - Concerned with True Postie (TP) vs False Postie (FP) detection of enemy aircraft.
+* To understand the ROC curve we need to understand TPs, FPs and relationship with a cutoff
+
+## Where to set the Cut-Off?
+```{r, echo = FALSE}
+glm_reduce_metrics  <-
+  augment(glm_reduce, type.predict = "response") 
+
+glm_reduce_metrics %>%
+  arrange(.fitted) %>%
+  ggplot(aes(x=jitter(1:nrow(.),20), y=jitter(.fitted,20), colour=as.factor(abnormal_pain))) +
+  ylab("fitted probability") +
+  xlab("obs# ordered by fitted probability") +
+  geom_point() + 
+  theme_minimal()  
+```
+
+##A ROC Curve
+* We're interested in how much 'ROC-space' is under the curve - Area Under Curve (AUC)
+```{r, echo=FALSE}
+glm_reduce_pred_ob <- 
+  prediction(predictions = glm_reduce_metrics$.fitted, labels = glm_reduce_metrics$abnormal_pain)
+
+perf <- performance(glm_reduce_pred_ob, measure = "tpr", x.measure = "fpr")
+plot(perf)
+abline(a = 0, b = 1)
+#val_gini = 2*(performance(val_pred_ob, measure = "auc")@y.values[[1]] - 0.5)
+```
+
+## Gini Coefficient
+* AUC summarises a binary model's performance characteristics
+* The Gini coefficient is rescaling of the AUC:
+$$ 2(AUC - 0.5) $$
