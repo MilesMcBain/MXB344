@@ -1,0 +1,286 @@
+---
+title: "MXB344 Lecture Week9"
+author: "Miles McBain"
+date: "20 September 2016"
+output:   
+  ioslides_presentation:
+    css: ../style.css
+---
+
+```{r, include=FALSE, echo=FALSE}
+library(readr)
+library(corrplot)
+library(car)
+library(caret)
+library(tidyr)
+library(purrr)
+library(broom)
+library(forcats)
+library(ggplot2)
+library(ROCR)
+library(tibble)
+library(rpart)
+library(rpart.plot)
+library(dplyr)
+```
+
+# Welcome
+MXB344 Week 9, Special Topic: Decision Trees
+
+## Motivation
+* Decision trees are a complementary predictive modelling tool to linear models that make **no assumptions about the distribution** of the response.
+* Generally easy to interpret
+* Applicable to a wide variety of problems:
+    - Variable importance, missing data imputation etc.
+    - **Classification and Regresstion** - CARTs
+
+
+## Guess Who? 
+```{r, include=TRUE, echo=FALSE}
+simpsons <- tribble(
+  ~name, ~gender, ~age, ~hobby, ~hometown,
+  "Homer", "M", "Adult", "TV", "Springfield",
+  "Bart", "M", "Child", "Skateboarding", "Springfield",
+  "Marge", "F", "Adult", "Cooking", "Springfield",
+  "Lisa", "F", "Child", "Saxophone", "Springfield",
+  "Maggie", "F", "Baby", "Dummy", "Springfield"
+  )
+knitr::kable(simpsons)
+```
+
+## Classifying Family Members {.codefont}
+```{r, echo=FALSE}
+tree_fit1 <-
+rpart(name ~ gender + age + hobby,
+      data = simpsons, 
+      method ="class", 
+      control=rpart.control(minsplit=2, minbucket=1, cp=0.001)
+)
+rpart.plot(tree_fit1)
+```
+
+## Classifying Titanic Survivors 
+```{r, echo=FALSE}
+titanic_data <- read_csv("./train.csv")
+tree_fit_titanic <- rpart(Survived ~ Pclass + Sex + Age,
+                          data = titanic_data,
+                          method = "class")
+rpart.plot(tree_fit_titanic)
+```
+
+## Confusion Matrix {.codefont}
+```{r}
+confusionMatrix(data = predict(tree_fit_titanic, type = "class"),
+                reference = titanic_data$Survived)
+```
+
+##Questions
+* How could I create a CART that is 100% accurate for the titanic training dataset?
+    - How confident would you be of using this in a submission to Kaggle?
+
+## How CARTs work
+* Terminology: Root node, Decision node, Leaf node, Branch.
+* The fit is based on a **recursive partitioning algorithm**.
+
+## Visualising the splitting process
+```{r, echo=FALSE}
+iris %>%
+  filter(Species %in% c("setosa","virginica")) %>%
+  ggplot(aes(x=Sepal.Length, y=Sepal.Width, colour=Species)) + 
+  geom_point()
+```
+
+## CART splits
+Can we draw the tree that corresponds to this decision boundary?
+```{r, echo=FALSE, include=TRUE}
+iris %>%
+  filter(Species %in% c("setosa","virginica")) %>%
+  ggplot(aes(x=Sepal.Length, y=Sepal.Width, colour=Species)) +
+  geom_point() +
+  geom_vline(xintercept = 5.8) +
+  geom_segment(aes(x = 5.8, xend = 8, y=3.9,yend=3.9), colour="black") +
+  geom_segment(aes(x = 4, xend = 5.8, y=2.8,yend=2.8), colour="black") +
+  geom_segment(aes(x = 4, xend = 5.8, y=2.8,yend=2.8), colour="black") +
+  geom_segment(aes(x = 4, xend = 5.8, y=2.4,yend=2.4), colour="black") 
+
+```
+
+## True Tree
+```{r, echo=FALSE}
+iris %>%
+  filter(Species %in% c("setosa","virginica")) %>%
+  rpart(Species ~ Sepal.Width + Sepal.Length,
+                          data = .,
+                          method = "class",
+        control=rpart.control(minsplit=2, minbucket=1, cp=0.001)) %>% 
+  rpart.plot()
+
+```
+
+##Logistic Regression Fit
+```{r, echo=FALSE, inlcude=FALSE, message=FALSE, warning=FALSE}
+iris %>%
+  filter(Species %in% c("setosa","virginica")) %>%
+  mutate(Species = ifelse(Species == "setosa", yes = 1, no =0)) %>%
+  glm(formula = as.numeric(Species) ~ Sepal.Width + Sepal.Length,
+      data = .,
+      family=binomial(link="logit")) -> out
+```
+
+```{r, echo=FALSE}
+iris %>%
+  filter(Species %in% c("setosa","virginica")) %>%
+  ggplot(aes(x=Sepal.Length, y=Sepal.Width, colour=Species)) +
+  geom_point() + 
+  ggtitle("Decision boundary for p=0.5") +
+  geom_abline(slope = (-166.6/-140.6), intercept = (445.4/-140.6), aes(colour="black"))
+```
+
+## The Algorithm {.codefont}
+A simple version:
+```
+Add root node to queue.
+Repeat unitl queue is empty:
+  For each node in queue:
+    For each covariate:
+      find binary split point that fits response best.
+    Split data into 2 new nodes based on best overall split.
+    For each new node node where: 
+      data > N AND fit < 100%,
+    add to queue.
+```
+
+* The algorithm is a top-down *greedy* one. 
+    - What does greedy mean here?
+* The main considerations are: 
+   - How do we define **best fit** for regression and classification?
+   - What values of N, D and other **stopping rules** should be used?
+
+## Regression
+* The objective is to minimise the Residual Sum of Squares:
+
+$$RSS = \sum^{J}_{j=i}\sum_{i \in N_{j}}(y_{i} - \bar{y}_{N_{j}})^{2}$$
+
+* However we do not need to evaluate this for all nodes when evaluating splits. We just need to evaluate and minimise it for each pair of child nodes that would be created by the split. 
+    - I'm going to call this the *Binary Sum of Squares* (BSS):
+
+$$ BSS = LSS + RSS $$
+$$ = \sum_{i \in N_{l}}(y_{i} - \bar{y}_{N_{l}})^{2} + \sum_{j \in N_{r}}(y_{j} - \bar{y}_{N_{r}})^{2}$$
+
+## Classification
+* The objective is to maximise classification accuracy. However accuracy proves annoying to optimise due to lack of smoothness. So we maximise something called the *Purity Index*.
+    - Sometimes also called the *Gini Index*
+
+To calculate *Binary Purity* :
+
+$$P_{B} = P_{L} + P_{R}$$   
+
+$$= \sum^{K}_{k=1}\hat{p}_{kl}(1-\hat{p}_{kl}) + \sum^{K}_{k=1}\hat{p}_{kr}(1-\hat{p}_{kr})$$
+
+where $\hat{p}_{kn}$ is the proportion of observations assigned class $k$ in node $n$.
+
+## Stopping Rules
+* If a node reaches purity of 1 or BSS of 0 then no further splits are made. (Duh!)
+* Usually there is an arbitrary small number set to the minimum number of data points in a node e.g. 20.
+    - This is tweakable
+* The stopping rules stop the build process but are not the method of avoiding overfitting. 
+
+## Avoiding Overfitting: Pruning
+* There is a **pruning** phase after construction has finished.
+* In the prune step we identify the subtree of our complete tree that minimises the **cost complexity**:
+
+$$\sum^{|T|}_{t=1}\sum_{i \in N_{t}}(y_{i} - \bar{y}_{N_{t}})^{2} + \alpha|T|$$
+
+Where $|T|$ is the number of terminal nodes (leaves).
+
+* This mechanism penalises larger trees with penalty factor determined by $\alpha$.
+    - How can we set $\alpha$?
+
+## Cross Validation of Trees
+* Cross validation, particularly k-fold, is intimately associated with all tree based predictive models.
+* The $\alpha$ parameter is selected by cross validation.
+    - This allows the method to *learn* the best number of leaf nodes to use for the data.
+* After selecting $\alpha$, the algorithm fits a final tree to all the data and makes a final prune, selecting the sub tree with the lowest cost complexity, as determined by $\alpha$.
+
+##CARTs in R
+* The package to use is `rpart`. - "Recursive Partitioning".
+* To make nice plots use another package: `rpart.plot`.
+* It supports continuous, discrete, binomial and multinomial data.
+    - For discrete data you can specify a dispersion parameter! :)
+
+```{r, eval=FALSE}
+titanic_data <- read_csv("./train.csv")
+tree_fit_titanic <- rpart(Survived ~ Pclass + Sex + Age,
+                          data = titanic_data,
+                          method = "class",
+                          control=rpart.control(minsplit=2, minbucket=1, cp=0.001, xval=10)) #cp is cutoff for cp improvement
+rpart.plot(tree_fit_titanic)
+
+prune_fit_titanic <- prune(tree_fit_titanic, cp=0.0092) #How do what cp where to prune?
+rpart.plot(prune_fit_titanic)
+```
+
+## Diagnostics
+* `rpart` provides plots to help you decide how to prune the tree, and determine your cross-validation error:
+```{r}
+plotcp(tree_fit_titanic)
+rpart::rsq.rpart(tree_fit_titanic)
+```
+
+## Example as a complementary method
+Using the spine data from last week:
+* Pretend we ignored the exploratory analysis step and just dived into modelling:
+```{r, echo=FALSE, include=FALSE}
+spine_data <- read_csv("./spine.csv")
+spine_data  <-
+  spine_data %>% 
+  mutate(abnormal_pain = ifelse(Class_att == "Abnormal", yes=1, no=0)) %>%
+  select(-Class_att)
+```
+
+```{r}
+glm_fit_all <- glm(data = spine_data,
+                   formula = abnormal_pain ~ .,
+                   family = binomial(link="logit"))
+```
+
+Can decision trees help us diagnose this warning?
+
+## Decision Tree as an Exploratory Diagnostic
+
+```{r, echo=TRUE, eval=FALSE}
+spine_tree_fit <-
+  spine_data %>% 
+  rpart(formula = abnormal_pain ~ .,
+                     data = .) 
+rpart.plot(spine_tree_fit, extra=101)
+                    
+```
+
+## Other Applications
+* Variable importance: Nodes near the top of the tree define the "broad brush" of the signal.
+    - Variables that appear multiple times at different levels have high importance.
+* [Built in handling of missing data](https://cran.r-project.org/web/packages/rpart/vignettes/longintro.pdf)
+    - Use a CART as a benchmark for your missing data handling on your linear models.
+* As an explanatory tool for a stakeholder.
+* To explore relationships in data that has no response. E.g. 'Market Basket Analysis'
+
+##Extensions
+* Bootstrap-Aggregation
+    - Build a bunch of big correlated trees.
+* Random Forrest
+    - Build a whole forest of small uncorrelated trees.
+* Boosted Regression Trees
+    - Create a sequence of tiny trees that iteratively acquire the signal in the data.
+    - See [XGBoost](http://xgboost.readthedocs.io/en/latest/model.html), the algorithm that dominates competitive machine learning.
+
+##Fun site
+[http://www.r2d3.us/visual-intro-to-machine-learning-part-1/](http://www.r2d3.us/visual-intro-to-machine-learning-part-1/)
+
+##Further Learning
+I developed this lecture from: 
+
+* This [youtube playlist](https://www.youtube.com/playlist?list=PL5-da3qGB5IB23TLuA8ZgVGC8hV8ZAdGh), which is a companion to *An Introduction to Statistical Learning with Applications in R* by Trevor Hastie and Rob Tibshirani.
+    - These guys have another highly regarded book: [The Elements of Statistical Learning](http://statweb.stanford.edu/~tibs/ElemStatLearn/)
+* Week 2 materials in the [QUT Big Data: Statistical Inference and Machine Learning MOOC](https://www.futurelearn.com/courses/big-data-machine-learning) by Amy Cook
+    - Amy sometimes teaches a QUT Maths honors module on Decision Trees and more advanced extensions (Random Forest, Boosted Regression Tree etc)
