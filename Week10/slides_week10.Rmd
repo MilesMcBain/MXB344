@@ -1,0 +1,224 @@
+---
+title: "slides_week10"
+author: "Miles McBain"
+date: "5 October 2016"
+output:   
+  ioslides_presentation:
+    css: ../style.css
+---
+
+```{r, include=FALSE, echo=FALSE}
+library(readr)
+library(corrplot)
+library(car)
+library(caret)
+library(tidyr)
+library(purrr)
+library(broom)
+library(forcats)
+library(ggplot2)
+library(ROCR)
+library(tibble)
+library(rpart)
+library(rpart.plot)
+library(dplyr)
+```
+
+#MXB344 Lecture 10
+
+## Housekeeping
+ * This will be the last formal lecture of MXB344.
+ * We still have the lecture timeslot available, so I will turn up for consultation from 9:00 and stick around for a bit so see if anyone turns up.
+ * The practical sessions continue as normal. In these sessions we will workshop your assignments, giving various examples and advice to help you get marks.
+    - You still need to attend to go through your delivery plans.
+ 
+## A Short Review of GLMs
+
+##Q: Types of count data?
+* What are two types of count data and how do we treat them differently?
+
+
+##A: Fixed vs Variable exposure
+* If we have fixed observation intervals in time or space for our counts then we can use a model of the form:
+
+$$log(\mu_{i}) = \beta_{0} + \beta_{1}x_{1} + \beta_{2}x_{2} + ... $$
+
+* Exposure/Offset is the mechanism by which we normalise our count observations for different exposures:
+
+$$log(\mu_{i}) = log(n_{i}) + \beta_{0} + \beta_{1}x_{1} + \beta_{2}x_{2} + ... $$
+
+never use:
+
+$$log\left(\frac{\mu_{i}}{n_{i}}\right) =\beta_{0} + \beta_{1}x_{1} + \beta_{2}x_{2} + ... $$
+
+why?
+
+##Q: Types of binomial data
+* What are two types of binomial data and how do we treat them differently?
+
+##A: Binary vs Proportion
+
+* If each response is coded 0/1 then it's binary, and the model will look like:
+
+$$log\left(\frac{\pi_{i}}{1-\pi_{i}}\right) = \beta_{0} + \beta_{1}x_{1} + \beta_{2}x_{2} + ... $$
+
+* If we have proportions, like the poisson case we need to normalise for the size of the group. The fitting algorithm will introduce a weight to each observation, $w_{i} = n_{i}$.
+    - Implies $n$ must be specified.
+    
+## Specifying $n_{i}$ to a binomial model in R {.codefont}
+* We didn't highlight this too much when we did the example, but here is the challenger logistic fit code:
+```{r, eval=FALSE}
+library(alr3)
+prop_model <- glm(data = challenger,
+                  formula = cbind(Fail, n-Fail) ~ Temp, 
+                  #(Failed, Didn't Fail) ~ Temp. Should sum to 6.
+                  family = binomial("logit"))
+summary(prop_model)
+```
+
+# Extending GLMs
+
+## Multnomial Logistic Regression
+p302 MAB624 notes.
+
+* You may recall the multinomial distribution from earlier studies:
+
+$$f(y|n) = \frac{n!}{y_{1}!y_{2}!...y_{J}!}\pi_{1}^{y_{1}}\pi_{2}^{y_{2}}...\pi_{J}^{y_{J}} $$
+
+where: $y = [Y_{1}, Y_{2}, ... Y_{J}]$ - a vector of counts summing to $n$!
+
+Example: I reach into a bag of m&m's and pull out 10, how likely is 5 brown, 5 green? 
+
+## Nominal vs Ordinal Multinomial Logistic Regression
+* Nominal: no implied order in response categories
+* Ordinal: response categories have an order.
+* Today we are considering **nominal** logistic regression.
+
+## Some Caveats
+* Multinomial distribution is not technically in the exponential family so the model cannot be fit in the same way.
+* Alternate link functions are possible but not consisdered here. Multinomial Probit Regression is a possibility. 
+
+## Example
+* Some boardwork to give you some intuition on how the multinomial model can be fit.
+* Fitting? Where to sub the expressions for each $\pi_{j}$?
+
+##Residuals and Deviance
+p305 MAB624 notes.
+
+* Are quite similar to the binary logistic case, but have an extra layer of summation
+
+Pearson Residuals: 
+$$r_{ij} = \frac{o_{ij} - n_{i}\pi_{ij}}{\sqrt{n_{i}\pi_{ij}}}$$
+
+Scaled Deviance distribution:
+$$D* \sim \chi^{2}(m(J-1)-p)$$
+
+As the saturated model now has $m(J-1)$ parmaters. 
+
+* Heuristic $D* \approx m(J-1)-p$ still holds.
+
+##In R
+* You cannot use `glm`
+* There are a number multinomial packages. `nnet` provides the simplest interface. 
+* `mllogit` and `mnlogit` are more flexible alternatives.
+
+##R Example {.codefont}
+```{r, eval=FALSE}
+library(nnet)
+#data from: http://data.princeton.edu/wws509/datasets/#copen
+house_data <- read.table("./copen.dat")
+multinom_fit <- 
+  house_data %>% 
+  spread(key = satisfaction, value = n) %>%
+  multinom(data = ., 
+         formula = cbind(high,low,medium) ~ housing + influence + contact)
+
+summary(multinom_fit)
+predict(multinom_fit, type="probs")
+residuals(multinom_fit, type="preds")
+```
+
+##Goodness of fit
+* The fucntionality in R is not built up aorund these kinds of models. Goodness of fit and model scoring as going to be more labor.
+* Similar principles as logistic regression can be used:
+    - Examine plots of the fits vs actuals
+    - Consider predictive accuracy on hold-out data... not always possible
+* Consider if there is evidence effects are different to 1 (having an impact).
+
+
+#Log Linear Models
+
+##Log Linear Models
+* Log-linear models are related to poisson regression and multinomial regression.
+* Concerned with the analysis of contingency tables
+    - A extension of the [chi-squared test of association](https://onlinecourses.science.psu.edu/stat200/node/73) for 2-way tables to n-way tables.
+    - contingency tables are problematic because they do not contain tidy data 
+* Largely rendered obsolete by glms and things you have already learned in this course. ;)
+
+
+##A contingency table
+```{r}
+Titanic #Yuck!
+#summary(Titainic)
+#don't worry:
+as_data_frame(Titanic)
+```
+
+##Notes on log linear analysis of contingeny tables
+* There is no 'response' the counts are used to try to infer relationships between covariates.
+    - Relationships are inferred by the significance of interaction terms in the model
+    - E.g. independence or no rleationship if no higher order interaction terms significant.
+
+##Example
+```{r, eval=FALSE}
+Titanic_Fit_Sat <- 
+  as_data_frame(Titanic) %>%
+  glm(formula = n ~ Class * Age * Sex * Survived, 
+      data=., 
+      family=poisson)
+
+anova(Titanic_Fit_Sat, test="Chisq") 
+
+Titanic_Fit_Red1 <-
+   as_data_frame(Titanic) %>%
+   glm(formula = n ~ Class + Age + Sex + Survived + Class:Survived + Age:Survived + Sex:Survived, 
+      data=., 
+      family=poisson)
+
+summary(Titanic_Fit_Red1)  
+
+anova(Titanic_Fit_Sat, Titanic_Fit_Red1, test="Chisq")
+
+Titanic_Fit_Red2 <-
+   as_data_frame(Titanic) %>%
+   glm(formula = n ~ Class + Sex + Age + Survived + Class:Sex + Class:Age + Sex:Age + 
+    Class:Survived + Sex:Survived + Age:Survived + 
+    Class:Sex:Survived + Class:Age:Survived + Sex:Age:Survived,
+    data=., 
+    family=poisson)
+
+summary(Titanic_Fit_Red2)  
+
+anova(Titanic_Fit_Sat, Titanic_Fit_Red2, test="Chisq")
+
+```
+
+#Types of hypothesis
+You can shoot for:
+* Full n-way association: No model can explain a similar amount of deviance than the full model.
+* Partial association: a model without the highest interaction level explains the same amount of variance.
+* Conditional independence: One variable has no significant interaction terms but others do
+* Full independence: No significant interaction terms.
+
+#Limitations of Log-Linear Models
+See p352 in MAB624 Notes for a long list of conditions and caveats. 
+
+#Researching Modelling Methods
+
+## Research Strategies 
+* Kaggle - find a competition that's similar to the analysis you want to do. Look over the winning methodologies.
+* Google Scholar
+    - Who's used this?
+    - Assignment example.
+
+
