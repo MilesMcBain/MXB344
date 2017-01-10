@@ -202,7 +202,7 @@ Where $|T|$ is the number of terminal nodes (leaves).
     - This allows the method to *learn* the best number of leaf nodes to use for the data.
 * After selecting $\alpha$, the algorithm fits a final tree to all the data and makes a final prune, selecting the sub tree with the lowest cost complexity, as determined by $\alpha$.
 
-##CARTs in R
+##CARTs in R {.codefont}
 * The package to use is `rpart`. - "Recursive Partitioning".
 * To make nice plots use another package: `rpart.plot`.
 * It supports continuous, discrete, binomial and multinomial data.
@@ -213,10 +213,11 @@ titanic_data <- read_csv("./train.csv")
 tree_fit_titanic <- rpart(Survived ~ Pclass + Sex + Age,
                           data = titanic_data,
                           method = "class",
-                          control=rpart.control(minsplit=2, minbucket=1, cp=0.001, xval=10)) #cp is cutoff for cp improvement
+                          control=rpart.control(minsplit=2, minbucket=1, 
+                                                cp=0.0001, xval=10)) 
 rpart.plot(tree_fit_titanic)
-
-prune_fit_titanic <- prune(tree_fit_titanic, cp=0.0092) #How do what cp where to prune?
+prune_fit_titanic <- prune(tree_fit_titanic, cp=0.0092) 
+#How do we determine cp, where to prune?
 rpart.plot(prune_fit_titanic)
 ```
 
@@ -248,7 +249,7 @@ Can decision trees help us diagnose this warning?
 
 ## Decision Tree as an Exploratory Diagnostic
 
-```{r, echo=TRUE, eval=FALSE}
+```{r, echo=FALSE, eval=TRUE}
 spine_tree_fit <-
   spine_data %>% 
   rpart(formula = abnormal_pain ~ .,

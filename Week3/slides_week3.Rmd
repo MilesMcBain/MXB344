@@ -195,11 +195,11 @@ poisson_glm_fit_all <- glm(data = DoctorVisits,
    formula = visits ~ ., #. means everything that isn't the response
    family = poisson(link="log") )
 
-poisson_glm_fit_all_step <- step(object = poisson_glm_fit_all,
-                                 scope = visits ~ .^2 #means cross product
-                            )
+#poisson_glm_fit_all_step <- step(object = poisson_glm_fit_all,
+#                                 scope = visits ~ .^2 #means cross product
+#                            )
 
-summary(poisson_glm_fit_all_step)
+#summary(poisson_glm_fit_all_step)
 
 ```
 

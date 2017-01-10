@@ -1,5 +1,5 @@
 ---
-title: "slides_week10"
+title: "MXB344 Lecture 10"
 author: "Miles McBain"
 date: "5 October 2016"
 output:   
@@ -24,15 +24,13 @@ library(rpart.plot)
 library(dplyr)
 ```
 
-#MXB344 Lecture 10
-
 ## Housekeeping
  * This will be the last formal lecture of MXB344.
  * We still have the lecture timeslot available, so I will turn up for consultation from 9:00 and stick around for a bit so see if anyone turns up.
  * The practical sessions continue as normal. In these sessions we will workshop your assignments, giving various examples and advice to help you get marks.
     - You still need to attend to go through your delivery plans.
  
-## A Short Review of GLMs
+# A Short Review of GLMs
 
 ##Q: Types of count data?
 * What are two types of count data and how do we treat them differently?
@@ -159,7 +157,7 @@ residuals(multinom_fit, type="preds")
 ##A contingency table
 ```{r}
 Titanic #Yuck!
-#summary(Titainic)
+summary(Titanic)
 #don't worry:
 as_data_frame(Titanic)
 ```
@@ -203,17 +201,19 @@ anova(Titanic_Fit_Sat, Titanic_Fit_Red2, test="Chisq")
 
 ```
 
-#Types of hypothesis
+##Types of hypothesis
 You can shoot for:
+
 * Full n-way association: No model can explain a similar amount of deviance than the full model.
 * Partial association: a model without the highest interaction level explains the same amount of variance.
 * Conditional independence: One variable has no significant interaction terms but others do
 * Full independence: No significant interaction terms.
+    - You can imagine how this might be useful if you designed the experiment correctly.
 
-#Limitations of Log-Linear Models
+##Limitations of Log-Linear Models
 See p352 in MAB624 Notes for a long list of conditions and caveats. 
 
-#Researching Modelling Methods
+##Researching Modelling Methods
 
 ## Research Strategies 
 * Kaggle - find a competition that's similar to the analysis you want to do. Look over the winning methodologies.
