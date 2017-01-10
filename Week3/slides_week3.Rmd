@@ -187,7 +187,7 @@ $$AIC = -2l(\hat{\mu}; y, \phi) + 2p$$
 
 ## Stepwise Model selection using AIC | Example
 We use `step` to automate model selection from a parameter space based on AIC.
-```{r, include=FALSE}
+```{r, eval=FALSE, include=FALSE}
 library(AER)
 data("DoctorVisits")
 

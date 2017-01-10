@@ -328,7 +328,7 @@ glm(formula = repay_fail ~ `term60 months` + int_rate + `emp_length< 1 year` + `
     purposeother + purposesmall_business + purposevacation +
     purposewedding + delinq_2yrs + inq_last_6mths + open_acc +
     pub_rec + revol_bal + revol_util + total_acc + total_rec_prncp +
-    total_rec_int + last_pymnt_amnt, family = "binomial", data = train_frame_alt,
+    total_rec_int + last_pymnt_amnt, family = "binomial", data = project_data_train,
     control = glm.control(maxit = 50)) -> mdl
 ```
 
