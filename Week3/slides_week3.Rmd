@@ -211,7 +211,7 @@ poisson_glm_fit_all <- glm(data = DoctorVisits,
 * There are actually many ways to define resisuals, each of which have some useful properties. We will use:
     + The **Deviance Residual** - measures each observation's contribution to **unit** deviance.
     + The **Pearson Residual** - raw residual scaled by std dev. associated with each $\mu_{i}$. Measures contribution to pearson statistic (Chi-squared) for goodness of fit.
-    
+
 ##Deviance residuals
 $$r_{i}^{D} = sign(y_{i}-\mu_{i})\sqrt{w_{i}d(y_{i},\hat{\mu{i}})}$$
 $$D = \sum (r_{i}^{D})^{2}$$
@@ -307,7 +307,14 @@ sa_full <- glm(data = sa,
 summary(sa_full)
 ```
 
-## Danger: Rate without an exposure
+## Danger: Rate without an exposure | Second last slide
 * You may encounter data where the response has "helpfully" been changed to a rate, but the exposure has been lost.
 * Modelling this is dangerous. For example an estimated rate of 1/3 from exposure 3 has much higher error than 100/300 from 300 observations, but that information is lost.
 * If you suspect exposure varies significantly proceed with caution.
+
+##Last Slide
+* Some issues we'll cover in the practical:
+* Exploratory Analysis 
+* Goodness of Fit
+* Intepretation
+* Dispersion
